@@ -122,14 +122,25 @@
                 <div id="hotNewsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8"></div>
             </section>
 
-            <!-- REGULAR FEED (Hiển thị lưới 6 ô bản tin) -->
+            <!-- REGULAR FEED (Chế độ xem Grid / List) -->
             <section>
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 space-y-3 sm:space-y-0">
                     <h2 id="sectionTitle" class="text-xl sm:text-2xl font-bold text-slate-900 flex items-center">
                         <i class="fas fa-stream mr-3 text-slate-400"></i> Recent Feed
                     </h2>
                     
-                    <div class="flex items-center space-x-3">
+                    <div class="flex flex-wrap items-center gap-3">
+                        
+                        <!-- VIEW MODE TOGGLE -->
+                        <div class="bg-slate-200/60 p-1 rounded-xl flex items-center shadow-inner">
+                            <button onclick="setViewMode('grid')" id="btnGrid" class="px-3.5 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm font-medium transition" title="Grid View">
+                                <i class="fas fa-th-large"></i>
+                            </button>
+                            <button onclick="setViewMode('list')" id="btnList" class="px-3.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 font-medium transition" title="List View">
+                                <i class="fas fa-list"></i>
+                            </button>
+                        </div>
+
                         <span id="currentScopeBadge" class="bg-blue-100 text-blue-700 text-sm font-bold px-4 py-1.5 rounded-full">School Wide</span>
                         
                         <!-- LOGOUT BUTTON CHO CLASS VIEW -->
@@ -245,6 +256,9 @@
         let pendingClassSelection = '';
         let pendingClassLabel = '';
         let currentActiveScope = 'General';
+        
+        // Quản lý trạng thái view mode
+        let currentViewMode = 'grid'; // 'grid' | 'list'
 
         let timerInterval;
         let secondsWaited = 0;
@@ -266,11 +280,10 @@
             document.getElementById('globalLoader').classList.add('hidden');
         }
 
-        // Hàm định dạng ngày theo kiểu 07-Jan-26
         function formatDateCustom(dateString) {
             if (!dateString) return '';
             const d = new Date(dateString);
-            if (isNaN(d.getTime())) return dateString; // Trả về nguyên bản nếu không phải ngày hợp lệ
+            if (isNaN(d.getTime())) return dateString;
             
             const day = String(d.getDate()).padStart(2, '0');
             const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -416,6 +429,24 @@
             selectClassOption('General', '🌐 School Wide');
         }
 
+        // Logic thay đổi View Mode
+        function setViewMode(mode) {
+            currentViewMode = mode;
+            const btnGrid = document.getElementById('btnGrid');
+            const btnList = document.getElementById('btnList');
+            
+            if (mode === 'grid') {
+                btnGrid.className = 'px-3.5 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm font-medium transition';
+                btnList.className = 'px-3.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 font-medium transition';
+            } else {
+                btnList.className = 'px-3.5 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm font-medium transition';
+                btnGrid.className = 'px-3.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 font-medium transition';
+            }
+            
+            // Render lại bản tin với view mới
+            renderView(currentActiveScope);
+        }
+
         function renderView(scope) {
             showView('home');
             currentActiveScope = scope;
@@ -448,13 +479,22 @@
                 ? appData.news.filter(x => !isTrendingItem(x) && x.Class === 'General')
                 : appData.news.filter(x => !isTrendingItem(x) && x.Class === scope); 
 
-            renderCardList(classFeed, 'newsContainer', false, 6); // Đã thay đổi hiển thị tối đa 6 ô bản tin
+            renderCardList(classFeed, 'newsContainer', false, 6);
         }
 
         function renderCardList(items, containerId, isHot, limit) {
             const container = document.getElementById(containerId);
             const noNewsMsg = document.getElementById('noNewsMsg');
             container.innerHTML = '';
+
+            // Layout switcher (Áp dụng riêng cho Recent Feed container)
+            if (!isHot && containerId === 'newsContainer') {
+                if (currentViewMode === 'list') {
+                    container.className = 'flex flex-col gap-6 sm:gap-8';
+                } else {
+                    container.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8';
+                }
+            }
 
             if (!isHot && items.length === 0) {
                 noNewsMsg.classList.remove('hidden');
@@ -473,26 +513,43 @@
             const limitedItems = sortedItems.slice(0, limit);
 
             limitedItems.forEach(item => {
-                const mediaHTML = generateMediaEmbed(item.MediaType, item.MediaURL, isHot);
+                const isList = (!isHot && currentViewMode === 'list' && containerId === 'newsContainer');
+
+                // Dynamic CSS Layout theo viewMode
+                const cardWrapperClass = isList 
+                    ? 'bg-white rounded-3xl overflow-hidden card-modern flex flex-col sm:flex-row h-full border border-slate-100 relative'
+                    : 'bg-white rounded-3xl overflow-hidden card-modern flex flex-col h-full border border-slate-100 relative';
+                    
+                const mediaWrapperClass = isList 
+                    ? 'relative w-full sm:w-2/5 lg:w-1/3 shrink-0 min-h-[14rem]'
+                    : 'relative';
+
+                const contentWrapperClass = isList
+                    ? 'p-5 sm:p-7 flex-grow flex flex-col justify-center'
+                    : 'p-5 sm:p-7 flex-grow flex flex-col';
+
+                const mediaHTML = generateMediaEmbed(item.MediaType, item.MediaURL, isHot, isList);
                 const badgeStyle = item.Class === 'General' 
                     ? 'bg-slate-100 text-slate-700 border-slate-200' 
                     : 'bg-indigo-50 text-indigo-700 border-indigo-100';
-
-                // Sử dụng hàm formatDateCustom để đổi ngày hiển thị thành 07-Jan-26
                 const formattedDate = formatDateCustom(item.Date);
+                
+                const btnClass = isList 
+                    ? 'inline-flex items-center justify-center w-full sm:w-max sm:px-6 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold py-3 rounded-xl transition text-sm mt-auto'
+                    : 'inline-flex items-center justify-center w-full bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold py-3 rounded-xl transition text-sm mt-auto';
 
                 const card = `
-                    <div class="bg-white rounded-3xl overflow-hidden card-modern flex flex-col h-full border border-slate-100 relative">
+                    <div class="${cardWrapperClass}">
                         ${item.Priority >= 80 && !isHot ? '<div class="absolute top-4 right-4 bg-yellow-400 text-yellow-900 text-xs font-extrabold px-3 py-1.5 rounded-full z-10 shadow-md animate-pulse"><i class="fas fa-thumbtack mr-1"></i> PINNED</div>' : ''}
-                        <div class="relative">${mediaHTML}</div>
-                        <div class="p-5 sm:p-7 flex-grow flex flex-col">
+                        <div class="${mediaWrapperClass}">${mediaHTML}</div>
+                        <div class="${contentWrapperClass}">
                             <div class="flex justify-between items-center mb-4">
                                 <span class="px-3 py-1 text-xs font-bold rounded-lg border ${badgeStyle}">${item.Class}</span>
                                 <span class="text-xs text-slate-400 font-bold tracking-wide"><i class="far fa-calendar-alt mr-1"></i> ${formattedDate}</span>
                             </div>
                             <h3 class="text-lg sm:text-xl font-bold text-slate-900 mb-3 leading-snug">${item.Title}</h3>
                             <p class="text-slate-600 text-sm font-medium mb-5 flex-grow line-clamp-3">${item.Description}</p>
-                            ${item.Link ? `<a href="${item.Link}" target="_blank" class="inline-flex items-center justify-center w-full bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold py-3 rounded-xl transition text-sm">Read Full Post <i class="fas fa-arrow-right ml-2 text-xs"></i></a>` : ''}
+                            ${item.Link ? `<a href="${item.Link}" target="_blank" class="${btnClass}">Read Full Post <i class="fas fa-arrow-right ml-2 text-xs"></i></a>` : ''}
                         </div>
                     </div>
                 `;
@@ -500,18 +557,20 @@
             });
         }
 
-        function generateMediaEmbed(type, url, isHot) {
-            const heightClass = isHot ? 'h-64 sm:h-72' : 'h-48 sm:h-56';
+        function generateMediaEmbed(type, url, isHot, isList = false) {
+            let heightClass = isHot ? 'h-64 sm:h-72' : 'h-48 sm:h-56';
+            let mediaStyle = isList ? 'w-full h-56 sm:absolute sm:inset-0 sm:h-full object-cover' : `w-full object-cover ${heightClass}`;
+            
             type = String(type).toLowerCase().trim();
             if (type === 'youtube') {
                 const ytId = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/)?.[1];
-                if (ytId) return `<iframe class="w-full ${heightClass}" src="https://www.youtube.com/embed/${ytId}" frameborder="0" allowfullscreen></iframe>`;
+                if (ytId) return `<iframe class="${mediaStyle}" src="https://www.youtube.com/embed/${ytId}" frameborder="0" allowfullscreen></iframe>`;
             } 
             if (type === 'tiktok') {
                 const ttId = url.match(/\/video\/(\d+)/)?.[1];
-                if (ttId) return `<iframe class="w-full ${heightClass}" src="https://www.tiktok.com/embed/v2/${ttId}" frameborder="0"></iframe>`;
+                if (ttId) return `<iframe class="${mediaStyle}" src="https://www.tiktok.com/embed/v2/${ttId}" frameborder="0"></iframe>`;
             }
-            return `<img src="${url || 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=500'}" class="w-full object-cover ${heightClass}">`;
+            return `<img src="${url || 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=500'}" class="${mediaStyle}">`;
         }
 
         function showView(v) {
