@@ -85,7 +85,7 @@
                 <!-- Actions -->
                 <div class="flex space-x-2 sm:space-x-4 items-center">
                     
-                    <!-- CUSTOM DROPDOWN (Đã sửa độ rộng ôm khít) -->
+                    <!-- CUSTOM DROPDOWN -->
                     <div class="relative" id="customDropdown">
                         <button onclick="toggleDropdown(event)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm sm:text-base rounded-xl py-2.5 px-4 font-bold transition flex items-center justify-center gap-2 w-max min-w-[140px]">
                             <span id="dropdownSelected" class="pointer-events-none whitespace-nowrap">🌐 School Wide</span>
@@ -122,7 +122,7 @@
                 <div id="hotNewsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8"></div>
             </section>
 
-            <!-- REGULAR FEED (Chỉ 3 tin) -->
+            <!-- REGULAR FEED (Hiển thị lưới 6 ô bản tin) -->
             <section>
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 space-y-3 sm:space-y-0">
                     <h2 id="sectionTitle" class="text-xl sm:text-2xl font-bold text-slate-900 flex items-center">
@@ -184,7 +184,7 @@
 
     </main>
 
-    <!-- PASSWORD MODAL (Đã thêm nút hiển thị mật khẩu) -->
+    <!-- PASSWORD MODAL -->
     <div id="passwordModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-md z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center transform transition-all border-t-4 border-blue-500">
             <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
@@ -266,6 +266,20 @@
             document.getElementById('globalLoader').classList.add('hidden');
         }
 
+        // Hàm định dạng ngày theo kiểu 07-Jan-26
+        function formatDateCustom(dateString) {
+            if (!dateString) return '';
+            const d = new Date(dateString);
+            if (isNaN(d.getTime())) return dateString; // Trả về nguyên bản nếu không phải ngày hợp lệ
+            
+            const day = String(d.getDate()).padStart(2, '0');
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const month = months[d.getMonth()];
+            const year = String(d.getFullYear()).slice(-2);
+            
+            return `${day}-${month}-${year}`;
+        }
+
         window.onload = async () => {
             showLoading("Connecting to school database...");
             try {
@@ -339,7 +353,6 @@
             }
         }
 
-        // Ẩn/hiện mật khẩu
         function togglePassVisibility() {
             const passInput = document.getElementById('classPassInput');
             const eyeIcon = document.getElementById('eyeIcon');
@@ -403,7 +416,6 @@
             selectClassOption('General', '🌐 School Wide');
         }
 
-        /* LỌC & GIỚI HẠN SỐ LƯỢNG HIỂN THỊ (SỬ DỤNG CATEGORY SHEET) */
         function renderView(scope) {
             showView('home');
             currentActiveScope = scope;
@@ -422,13 +434,12 @@
             if (isHome) logoutBtn.classList.add('hidden');
             else logoutBtn.classList.remove('hidden');
 
-            // Hàm kiểm tra bài viết có phải Trending (Dựa vào cột Category từ Sheet)
             const isTrendingItem = (item) => String(item.Category).trim().toUpperCase() === 'TRENDING';
 
             if (isHome) {
                 hotSection.classList.remove('hidden');
                 const hotItems = appData.news.filter(x => isTrendingItem(x) && x.Class === 'General');
-                renderCardList(hotItems, 'hotNewsContainer', true, 2); // HIỂN THỊ TỐI ĐA 2 TIN HOT
+                renderCardList(hotItems, 'hotNewsContainer', true, 2);
             } else {
                 hotSection.classList.add('hidden');
             }
@@ -437,10 +448,9 @@
                 ? appData.news.filter(x => !isTrendingItem(x) && x.Class === 'General')
                 : appData.news.filter(x => !isTrendingItem(x) && x.Class === scope); 
 
-            renderCardList(classFeed, 'newsContainer', false, 3); // HIỂN THỊ TỐI ĐA 3 TIN RECENT
+            renderCardList(classFeed, 'newsContainer', false, 6); // Đã thay đổi hiển thị tối đa 6 ô bản tin
         }
 
-        // Hàm render list có tham số limit
         function renderCardList(items, containerId, isHot, limit) {
             const container = document.getElementById(containerId);
             const noNewsMsg = document.getElementById('noNewsMsg');
@@ -460,7 +470,6 @@
                 return b.originalIndex - a.originalIndex;
             });
 
-            // Cắt đúng số lượng theo yêu cầu (2 cho hot, 3 cho recent)
             const limitedItems = sortedItems.slice(0, limit);
 
             limitedItems.forEach(item => {
@@ -469,6 +478,9 @@
                     ? 'bg-slate-100 text-slate-700 border-slate-200' 
                     : 'bg-indigo-50 text-indigo-700 border-indigo-100';
 
+                // Sử dụng hàm formatDateCustom để đổi ngày hiển thị thành 07-Jan-26
+                const formattedDate = formatDateCustom(item.Date);
+
                 const card = `
                     <div class="bg-white rounded-3xl overflow-hidden card-modern flex flex-col h-full border border-slate-100 relative">
                         ${item.Priority >= 80 && !isHot ? '<div class="absolute top-4 right-4 bg-yellow-400 text-yellow-900 text-xs font-extrabold px-3 py-1.5 rounded-full z-10 shadow-md animate-pulse"><i class="fas fa-thumbtack mr-1"></i> PINNED</div>' : ''}
@@ -476,7 +488,7 @@
                         <div class="p-5 sm:p-7 flex-grow flex flex-col">
                             <div class="flex justify-between items-center mb-4">
                                 <span class="px-3 py-1 text-xs font-bold rounded-lg border ${badgeStyle}">${item.Class}</span>
-                                <span class="text-xs text-slate-400 font-bold tracking-wide"><i class="far fa-calendar-alt mr-1"></i> ${new Date(item.Date).toLocaleDateString()}</span>
+                                <span class="text-xs text-slate-400 font-bold tracking-wide"><i class="far fa-calendar-alt mr-1"></i> ${formattedDate}</span>
                             </div>
                             <h3 class="text-lg sm:text-xl font-bold text-slate-900 mb-3 leading-snug">${item.Title}</h3>
                             <p class="text-slate-600 text-sm font-medium mb-5 flex-grow line-clamp-3">${item.Description}</p>
