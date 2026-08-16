@@ -38,6 +38,12 @@
         
         .dropdown-enter { animation: dropIn 0.2s cubic-bezier(0, 0, 0.2, 1) forwards; transform-origin: top; }
         @keyframes dropIn { from { opacity: 0; transform: scaleY(0.95); } to { opacity: 1; transform: scaleY(1); } }
+
+        /* Custom Scrollbar cho phần Preview */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body class="antialiased">
@@ -111,7 +117,7 @@
         
         <!-- MAIN NEWS VIEW -->
         <div id="newsView" class="hidden">
-            <!-- HOT NEWS (Chỉ 2 tin) -->
+            <!-- HOT NEWS -->
             <section id="hotNewsSection" class="mb-14 hidden">
                 <div class="flex items-center space-x-3 mb-6">
                     <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-xl">
@@ -122,7 +128,7 @@
                 <div id="hotNewsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8"></div>
             </section>
 
-            <!-- REGULAR FEED (Chế độ xem Grid / List) -->
+            <!-- REGULAR FEED -->
             <section>
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 space-y-3 sm:space-y-0">
                     <h2 id="sectionTitle" class="text-xl sm:text-2xl font-bold text-slate-900 flex items-center">
@@ -221,28 +227,40 @@
     </div>
 
     <!-- PREVIEW MODAL -->
-    <div id="previewModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-md z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl">
-            <h3 class="text-2xl font-extrabold text-slate-900 mb-5 flex items-center"><span class="mr-2">✨</span> Review Submission</h3>
-            <div class="bg-slate-50 p-5 rounded-2xl mb-6 border border-slate-200">
+    <div id="previewModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-md z-50 flex items-center justify-center p-0 sm:p-4">
+        <div id="previewBox" class="bg-white rounded-none sm:rounded-3xl p-6 sm:p-8 max-w-lg w-full h-full sm:h-auto shadow-2xl flex flex-col max-h-screen sm:max-h-[95vh] transition-all duration-300">
+            <!-- Header có nút mở toàn màn hình -->
+            <div class="flex justify-between items-center mb-5 shrink-0">
+                <h3 class="text-2xl font-extrabold text-slate-900 flex items-center"><span class="mr-2">✨</span> Review Submission</h3>
+                <button type="button" onclick="toggleFullScreenPreview()" id="fullScreenBtn" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-blue-600 transition" title="Toggle Fullscreen">
+                    <i class="fas fa-expand text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Phần nội dung Preview được thiết lập cuộn (scroll) -->
+            <div id="previewContentArea" class="bg-slate-50 p-5 rounded-2xl mb-6 border border-slate-200 max-h-[45vh] overflow-y-auto custom-scrollbar">
                 <div class="flex items-center mb-3">
-                    <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg mr-3 uppercase" id="prevAvatar">A</div>
+                    <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg mr-3 uppercase shrink-0" id="prevAvatar">A</div>
                     <div>
                         <p class="font-bold text-slate-900 text-sm" id="prevName"></p>
                         <p class="text-xs font-semibold text-slate-500" id="prevClass"></p>
                     </div>
                 </div>
-                <p class="text-slate-700 font-medium leading-relaxed" id="prevContent"></p>
+                <!-- Thêm whitespace-pre-wrap để giữ nguyên định dạng xuống dòng -->
+                <p class="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap break-words" id="prevContent"></p>
             </div>
             
-            <label class="flex items-start space-x-3 cursor-pointer mb-8 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 hover:bg-blue-50 transition">
-                <input type="checkbox" id="confirmRules" class="mt-0.5 w-5 h-5 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500">
-                <span class="text-sm font-semibold text-slate-700">I confirm this information is accurate, respectful, and appropriate for the school.</span>
-            </label>
-            
-            <div class="flex space-x-4">
-                <button onclick="closePreview()" class="flex-1 py-3.5 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Edit Draft</button>
-                <button onclick="submitData()" id="finalSubmitBtn" class="flex-1 py-3.5 rounded-xl font-bold bg-blue-600 text-white opacity-50 cursor-not-allowed transition" disabled>Submit Now</button>
+            <!-- Phần Confirm và Buttons luôn nằm dưới cùng -->
+            <div class="shrink-0 mt-auto">
+                <label class="flex items-start space-x-3 cursor-pointer mb-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 hover:bg-blue-50 transition">
+                    <input type="checkbox" id="confirmRules" class="mt-0.5 w-5 h-5 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500 shrink-0">
+                    <span class="text-sm font-semibold text-slate-700">I confirm this information is accurate, respectful, and appropriate for the school.</span>
+                </label>
+                
+                <div class="flex space-x-4">
+                    <button onclick="closePreview()" class="flex-1 py-3.5 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Edit Draft</button>
+                    <button onclick="submitData()" id="finalSubmitBtn" class="flex-1 py-3.5 rounded-xl font-bold bg-blue-600 text-white opacity-50 cursor-not-allowed transition" disabled>Submit Now</button>
+                </div>
             </div>
         </div>
     </div>
@@ -257,11 +275,13 @@
         let pendingClassLabel = '';
         let currentActiveScope = 'General';
         
-        // Quản lý trạng thái view mode
-        let currentViewMode = 'grid'; // 'grid' | 'list'
+        let currentViewMode = 'grid';
 
         let timerInterval;
         let secondsWaited = 0;
+        
+        // Trạng thái cho chế độ xem toàn màn hình của Preview Modal
+        let isPreviewFullScreen = false;
 
         function showLoading(message) {
             document.getElementById('loaderText').innerText = message;
@@ -429,7 +449,6 @@
             selectClassOption('General', '🌐 School Wide');
         }
 
-        // Logic thay đổi View Mode
         function setViewMode(mode) {
             currentViewMode = mode;
             const btnGrid = document.getElementById('btnGrid');
@@ -443,7 +462,6 @@
                 btnGrid.className = 'px-3.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 font-medium transition';
             }
             
-            // Render lại bản tin với view mới
             renderView(currentActiveScope);
         }
 
@@ -487,7 +505,6 @@
             const noNewsMsg = document.getElementById('noNewsMsg');
             container.innerHTML = '';
 
-            // Layout switcher (Áp dụng riêng cho Recent Feed container)
             if (!isHot && containerId === 'newsContainer') {
                 if (currentViewMode === 'list') {
                     container.className = 'flex flex-col gap-6 sm:gap-8';
@@ -515,7 +532,6 @@
             limitedItems.forEach(item => {
                 const isList = (!isHot && currentViewMode === 'list' && containerId === 'newsContainer');
 
-                // Dynamic CSS Layout theo viewMode
                 const cardWrapperClass = isList 
                     ? 'bg-white rounded-3xl overflow-hidden card-modern flex flex-col sm:flex-row h-full border border-slate-100 relative'
                     : 'bg-white rounded-3xl overflow-hidden card-modern flex flex-col h-full border border-slate-100 relative';
@@ -584,6 +600,37 @@
         const confirmRules = document.getElementById('confirmRules');
         const finalSubmitBtn = document.getElementById('finalSubmitBtn');
 
+        // Logic Mở rộng/Thu nhỏ Preview Modal
+        function toggleFullScreenPreview() {
+            const previewBox = document.getElementById('previewBox');
+            const contentArea = document.getElementById('previewContentArea');
+            const icon = document.getElementById('fullScreenBtn').querySelector('i');
+            
+            isPreviewFullScreen = !isPreviewFullScreen;
+            
+            if (isPreviewFullScreen) {
+                // Phóng to
+                previewBox.classList.remove('max-w-lg', 'sm:rounded-3xl', 'sm:max-h-[95vh]');
+                previewBox.classList.add('max-w-full', 'w-full', 'h-full', 'rounded-none');
+                
+                contentArea.classList.remove('max-h-[45vh]');
+                contentArea.classList.add('flex-grow'); // Để nó chiếm phần diện tích còn lại
+                
+                icon.classList.remove('fa-expand');
+                icon.classList.add('fa-compress');
+            } else {
+                // Thu nhỏ về Modal bình thường
+                previewBox.classList.remove('max-w-full', 'w-full', 'h-full', 'rounded-none');
+                previewBox.classList.add('max-w-lg', 'sm:rounded-3xl', 'sm:max-h-[95vh]');
+                
+                contentArea.classList.remove('flex-grow');
+                contentArea.classList.add('max-h-[45vh]');
+                
+                icon.classList.remove('fa-compress');
+                icon.classList.add('fa-expand');
+            }
+        }
+
         function handlePreview(e) {
             e.preventDefault();
             const name = document.getElementById('studentName').value;
@@ -599,6 +646,11 @@
             confirmRules.checked = false;
             finalSubmitBtn.disabled = true;
             finalSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            
+            // Trả về kích thước cũ nếu đang bật Fullscreen rồi bấm Đóng
+            if (isPreviewFullScreen) {
+                toggleFullScreenPreview();
+            }
         }
 
         confirmRules.addEventListener('change', function() {
