@@ -1,0 +1,943 @@
+Bang diem code.gs
+--------
+function doGet(e) {
+  // Set headers for CORS
+  var output = ContentService.createTextOutput();
+  output.setMimeType(ContentService.MimeType.JSON);
+  
+  var id = e.parameter.id;
+  if (!id) {
+    return output.setContent(JSON.stringify({ error: "Please enter a Student ID." }));
+  }
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = sheet.getDataRange().getValues();
+
+  if (data.length < 3) {
+    return output.setContent(JSON.stringify({ error: "Database is empty or missing setup." }));
+  }
+
+  var headers = data[0]; // Row 1: Headers
+  var permissions = data[1]; // Row 2: Checkboxes (TRUE/FALSE)
+  
+  var studentData = null;
+
+  // Find the student by ID (Column A is index 0)
+  for (var i = 2; i < data.length; i++) {
+    if (String(data[i][0]) === String(id)) {
+      studentData = data[i];
+      break;
+    }
+  }
+
+  if (!studentData) {
+    return output.setContent(JSON.stringify({ error: "Student ID not found." }));
+  }
+
+  var result = {};
+  
+  // Filter data based on permissions (Row 2)
+  for (var j = 0; j < headers.length; j++) {
+    var isAllowed = (permissions[j] === true || String(permissions[j]).toUpperCase() === 'TRUE');
+    if (isAllowed) {
+      result[headers[j]] = studentData[j];
+    }
+  }
+
+  return output.setContent(JSON.stringify({ success: true, data: result }));
+}
+--------
+Bang diem giaodien.html
+--------
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Information Portal</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --border: #E5E7EB;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 480px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+
+        .search-box {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            background-color: var(--primary);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #9CA3AF;
+            cursor: not-allowed;
+        }
+
+        /* Results Area */
+        #resultContainer {
+            margin-top: 25px;
+            display: none;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 500;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            width: 40%;
+        }
+
+        .info-value {
+            font-weight: 500;
+            color: var(--text-main);
+            text-align: right;
+            width: 60%;
+            word-wrap: break-word;
+        }
+
+        .message {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .error { color: #DC2626; }
+        .loading { color: var(--primary); font-weight: 500; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h2>IGSCE ICT 10 Student Portal</h2>
+            <p>Enter your ID to view your information</p>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="studentId" placeholder="e.g. 123456" autocomplete="off" onkeypress="handleKeyPress(event)">
+            <button id="searchBtn" onclick="searchData()">Search Information</button>
+        </div>
+
+        <div id="messageBox" class="message"></div>
+
+        <div id="resultContainer">
+            <!-- Data will be populated here dynamically -->
+        </div>
+    </div>
+
+    <script>
+        // BƯỚC QUAN TRỌNG: Thay link của bạn vào biến này
+        const WEB_APP_URL = "Nhap URL vao";
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') {
+                searchData();
+            }
+        }
+
+        async function searchData() {
+            const idInput = document.getElementById('studentId').value.trim();
+            const messageBox = document.getElementById('messageBox');
+            const resultContainer = document.getElementById('resultContainer');
+            const searchBtn = document.getElementById('searchBtn');
+
+            if (!idInput) {
+                showMessage("Please enter your Student ID.", "error");
+                resultContainer.style.display = "none";
+                return;
+            }
+
+            // Reset UI
+            resultContainer.style.display = "none";
+            resultContainer.innerHTML = '';
+            searchBtn.disabled = true;
+            searchBtn.innerText = "Searching...";
+            showMessage("Loading data, please wait...", "loading");
+
+            try {
+                // Fetch data from Google Apps Script
+                const response = await fetch(`${WEB_APP_URL}?id=${encodeURIComponent(idInput)}`);
+                const json = await response.json();
+
+                if (json.error) {
+                    showMessage(json.error, "error");
+                } else if (json.success) {
+                    showMessage("", "");
+                    displayData(json.data);
+                }
+            } catch (error) {
+                showMessage("Connection error. Please try again later.", "error");
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.innerText = "Search Information";
+            }
+        }
+
+        function displayData(data) {
+            const resultContainer = document.getElementById('resultContainer');
+            resultContainer.innerHTML = '';
+
+            // Dynamically create rows for allowed columns
+            for (const [key, value] of Object.entries(data)) {
+                // Skip empty values for cleaner UI
+                if (value === "" || value === null) continue;
+
+                const row = document.createElement('div');
+                row.className = 'info-row';
+                
+                const label = document.createElement('div');
+                label.className = 'info-label';
+                label.innerText = key; // Column Header
+                
+                const val = document.createElement('div');
+                val.className = 'info-value';
+                
+                // Format dates nicely if they are ISO strings
+                if(typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}T/)) {
+                    const date = new Date(value);
+                    val.innerText = date.toLocaleDateString('en-GB');
+                } else {
+                    val.innerText = value;
+                }
+
+                row.appendChild(label);
+                row.appendChild(val);
+                resultContainer.appendChild(row);
+            }
+
+            resultContainer.style.display = "block";
+        }
+
+        function showMessage(text, type) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.innerText = text;
+            messageBox.className = "message " + type;
+        }
+    </script>
+</body>
+</html>
+
+--------
+Bang diem data Google Sheet
+--------
+ID	Full name	Nickname	Thông báo	Điểm 1	Điểm 2	Điểm 3	Điểm 4
+FALSE	TRUE	TRUE	TRUE	TRUE	TRUE	FALSE	FALSE
+SV001	Nguyễn Văn An	An Nốt	Nhớ làm bài tập	8.5	7	9	8
+SV002	Trần Thị Bích	Bích Bon	Nhớ làm bài tập	7	8.5	6.5	7.5
+SV003	Lê Hoàng Cường	Cường Cáp	Nhớ làm bài tập	6	6.5	7	8
+SV004	Phạm Minh Dung	Dung Zút	Nhớ làm bài tập	9	9.5	8.5	9
+SV005	Hoàng Giang Nam	Nam Béo	Nhớ làm bài tập	5.5	6	7.5	6.5
+--------
+Tracking Attendance code.gs
+--------
+function doGet(e) {
+  var output = ContentService.createTextOutput();
+  output.setMimeType(ContentService.MimeType.JSON);
+  
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 1. Get Settings (Tab 2)
+    var settingsSheet = ss.getSheetByName("Settings");
+    var settingsData = settingsSheet.getDataRange().getValues();
+    var headers = settingsData[0];
+    var checkboxes = settingsData[1];
+    var activeColumns = [];
+    
+    for (var i = 0; i < headers.length; i++) {
+      if (checkboxes[i] === true || String(checkboxes[i]).toUpperCase() === 'TRUE') {
+        activeColumns.push(headers[i]);
+      }
+    }
+    
+    // 2. Get Students and Classes (Tab 1)
+    var studentSheet = ss.getSheetByName("Students");
+    var studentData = studentSheet.getDataRange().getValues();
+    var students = [];
+    var classesSet = {};
+    
+    for (var j = 1; j < studentData.length; j++) {
+      var row = studentData[j];
+      if (row[0]) { // If ID exists
+        var className = row[1];
+        classesSet[className] = true;
+        
+        students.push({
+          id: row[0],
+          className: className,
+          fullName: row[2],
+          nickname: row[3]
+        });
+      }
+    }
+    
+    var uniqueClasses = Object.keys(classesSet).sort();
+    
+    return output.setContent(JSON.stringify({
+      success: true,
+      classes: uniqueClasses,
+      students: students,
+      trackingColumns: activeColumns
+    }));
+    
+  } catch (error) {
+    return output.setContent(JSON.stringify({ success: false, error: error.toString() }));
+  }
+}
+
+function doPost(e) {
+  var output = ContentService.createTextOutput();
+  output.setMimeType(ContentService.MimeType.JSON);
+  
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var recordsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Records");
+    var timestamp = new Date();
+    
+    // Prepare rows for batch insertion
+    var rowsToAppend = [];
+    
+    for (var i = 0; i < data.attendance.length; i++) {
+      var record = data.attendance[i];
+      // Format tracking data as string
+      var trackingString = "";
+      for (var key in record.tracking) {
+        trackingString += key + ": " + record.tracking[key] + " | ";
+      }
+      
+      rowsToAppend.push([
+        timestamp,
+        data.teacherName,
+        data.className,
+        record.studentId,
+        record.studentName,
+        trackingString,
+        record.note
+      ]);
+    }
+    
+    // Append all rows at once
+    if (rowsToAppend.length > 0) {
+      recordsSheet.getRange(recordsSheet.getLastRow() + 1, 1, rowsToAppend.length, rowsToAppend[0].length).setValues(rowsToAppend);
+    }
+    
+    return output.setContent(JSON.stringify({ success: true, message: "Attendance saved successfully!" }));
+    
+  } catch (error) {
+    return output.setContent(JSON.stringify({ success: false, error: error.toString() }));
+  }
+}
+--------
+Tracking Attendance giaodien.html
+--------
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Attendance Portal</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --success: #10B981;
+            --danger: #EF4444;
+            --bg: #F9FAFB;
+            --card-bg: #FFFFFF;
+            --border: #E5E7EB;
+            --text-main: #111827;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body { background-color: var(--bg); color: var(--text-main); padding: 20px; }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        h2 { text-align: center; margin-bottom: 20px; color: var(--primary); }
+
+        /* Setup Section */
+        .setup-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 15px;
+            margin-bottom: 30px;
+            background: #F3F4F6;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+
+        button:hover { background: var(--primary-hover); }
+        button:disabled { background: #9CA3AF; cursor: not-allowed; }
+
+        .btn-success { background: var(--success); }
+        .btn-success:hover { background: #059669; }
+
+        /* Table */
+        .table-responsive {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            white-space: nowrap;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th { background: #F9FAFB; font-weight: 600; position: sticky; top: 0; }
+        
+        td.text-left { text-align: left; }
+
+        /* Emoji Tracking Buttons */
+        .emoji-btn {
+            font-size: 24px;
+            background: transparent;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 5px 10px;
+            cursor: pointer;
+            filter: grayscale(100%);
+            opacity: 0.3;
+            transition: all 0.2s ease;
+        }
+
+        .emoji-btn.green {
+            filter: grayscale(0%);
+            opacity: 1;
+            background: #D1FAE5; /* Light Green */
+            border-color: var(--success);
+        }
+
+        .emoji-btn.red {
+            filter: grayscale(0%);
+            opacity: 1;
+            background: #FEE2E2; /* Light Red */
+            border-color: var(--danger);
+        }
+
+        .note-input {
+            width: 200px;
+            padding: 8px;
+            font-size: 14px;
+        }
+
+        /* Review Modal (Full Screen) */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: white;
+            z-index: 1000;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 20px;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .zoom-controls button {
+            background: rgba(255,255,255,0.2);
+            margin-left: 10px;
+            padding: 8px 15px;
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow: auto; /* Scroll trái/phải/lên/xuống */
+            padding: 20px;
+            font-size: 16px; /* Base size for zoom */
+        }
+
+        .modal-footer {
+            padding: 20px;
+            background: #F3F4F6;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .confirm-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--danger);
+            cursor: pointer;
+        }
+
+        .confirm-box input[type="checkbox"] {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+
+        .empty-note {
+            color: #9CA3AF;
+            font-style: italic;
+            font-weight: 500;
+        }
+        
+        .error-msg { color: var(--danger); font-weight: bold; text-align: center; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>📝 Daily Attendance & Tracking</h2>
+        
+        <div class="setup-section">
+            <input type="text" id="teacherName" placeholder="Enter Teacher's Name">
+            <select id="classSelect">
+                <option value="">-- Select Class --</option>
+                <!-- Classes will be loaded here -->
+            </select>
+            <button id="loadBtn" onclick="fetchData()">Load Data</button>
+        </div>
+        
+        <div id="errorMsg" class="error-msg"></div>
+
+        <div id="mainContent" style="display: none;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                <button onclick="markAllGreen()">Mark All as Done (Green)</button>
+                <button class="btn-success" onclick="openReview()">Review & Submit</button>
+            </div>
+
+            <div class="table-responsive">
+                <table id="attendanceTable">
+                    <thead>
+                        <tr id="tableHeader">
+                            <th>ID</th>
+                            <th class="text-left">Student Name</th>
+                            <!-- Tracking columns added dynamically -->
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Students added dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULL SCREEN REVIEW MODAL -->
+    <div class="modal" id="reviewModal">
+        <div class="modal-header">
+            <h2>🔍 Final Review Mode</h2>
+            <div class="zoom-controls">
+                <span>Text Size:</span>
+                <button onclick="changeZoom(-2)">A-</button>
+                <button onclick="changeZoom(2)">A+</button>
+            </div>
+        </div>
+        
+        <div class="modal-body" id="reviewContainer">
+            <div class="table-responsive">
+                <table id="reviewTable">
+                    <thead>
+                        <tr id="reviewHeader"></tr>
+                    </thead>
+                    <tbody id="reviewBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <label class="confirm-box">
+                <input type="checkbox" id="confirmCheck" onchange="toggleSubmitBtn()">
+                I have carefully reviewed all data (Required to Submit)
+            </label>
+            <div>
+                <button style="background: #6B7280; margin-right: 10px;" onclick="closeReview()">Back to Edit</button>
+                <button id="submitBtn" class="btn-success" disabled onclick="submitData()">Confirm & Submit Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // BƯỚC QUAN TRỌNG: DÁN WEB APP URL CỦA BẠN VÀO ĐÂY
+        const WEB_APP_URL = "Nhap URL";
+        
+        let globalData = null;
+        let currentClass = "";
+        let zoomLevel = 16; // Font size base
+
+        // Tải danh sách lớp khi mở trang
+        window.onload = async () => {
+            const loadBtn = document.getElementById('loadBtn');
+            loadBtn.innerText = "Connecting...";
+            try {
+                const response = await fetch(WEB_APP_URL);
+                const json = await response.json();
+                if (json.success) {
+                    globalData = json;
+                    const select = document.getElementById('classSelect');
+                    json.classes.forEach(cls => {
+                        let opt = document.createElement('option');
+                        opt.value = cls;
+                        opt.innerText = cls;
+                        select.appendChild(opt);
+                    });
+                    loadBtn.innerText = "Load Students";
+                }
+            } catch (err) {
+                document.getElementById('errorMsg').innerText = "Connection failed. Please check the URL.";
+                document.getElementById('errorMsg').style.display = 'block';
+            }
+        };
+
+        function fetchData() {
+            const tName = document.getElementById('teacherName').value.trim();
+            currentClass = document.getElementById('classSelect').value;
+
+            if (!tName || !currentClass) {
+                alert("Please enter your name and select a class!");
+                return;
+            }
+
+            document.getElementById('mainContent').style.display = 'block';
+            renderTable();
+        }
+
+        function renderTable() {
+            const thead = document.getElementById('tableHeader');
+            const tbody = document.getElementById('tableBody');
+            
+            // Xóa header cũ, chỉ giữ ID và Name
+            thead.innerHTML = '<th>ID</th><th class="text-left">Student Name</th>';
+            globalData.trackingColumns.forEach(col => {
+                thead.innerHTML += `<th>${col}</th>`;
+            });
+            thead.innerHTML += '<th>Note</th>';
+
+            tbody.innerHTML = '';
+            
+            // Lọc học sinh theo lớp
+            const students = globalData.students.filter(s => s.className === currentClass);
+            
+            students.forEach(std => {
+                let tr = document.createElement('tr');
+                tr.setAttribute('data-id', std.id);
+                tr.setAttribute('data-name', std.fullName);
+                
+                let html = `
+                    <td>${std.id}</td>
+                    <td class="text-left"><b>${std.fullName}</b><br><small>${std.nickname}</small></td>
+                `;
+
+                globalData.trackingColumns.forEach(col => {
+                    html += `
+                        <td>
+                            <button class="emoji-btn" data-col="${col}" onclick="cycleEmoji(this)">
+                                ${col.split(' ')[0]} <!-- Lấy emoji ra nếu có -->
+                            </button>
+                        </td>
+                    `;
+                });
+
+                html += `<td><input type="text" class="note-input" placeholder="Type note..."></td>`;
+                tr.innerHTML = html;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Logic thay thế nhấp đúp: Gray -> Green -> Red -> Gray
+        function cycleEmoji(btn) {
+            if (!btn.classList.contains('green') && !btn.classList.contains('red')) {
+                btn.classList.add('green'); // Lần 1: Xanh
+            } else if (btn.classList.contains('green')) {
+                btn.classList.remove('green');
+                btn.classList.add('red');   // Lần 2 (Nhấp đúp): Đỏ
+            } else {
+                btn.classList.remove('red'); // Lần 3: Reset
+            }
+        }
+
+        function markAllGreen() {
+            document.querySelectorAll('.emoji-btn').forEach(btn => {
+                btn.classList.remove('red');
+                btn.classList.add('green');
+            });
+        }
+
+        // --- HỆ THỐNG REVIEW BẮT BUỘC (FORCE REVIEW) ---
+        function openReview() {
+            // 1. Ép buộc kiểm tra: Tất cả checkbox phải được tick (Xanh hoặc Đỏ), không được để Xám
+            const allBtns = document.querySelectorAll('.emoji-btn');
+            let isAllMarked = true;
+            for (let btn of allBtns) {
+                if (!btn.classList.contains('green') && !btn.classList.contains('red')) {
+                    isAllMarked = false;
+                    break;
+                }
+            }
+
+            if (!isAllMarked) {
+                alert("⚠️ WARNING: You must mark ALL items (Green or Red) for ALL students before reviewing!");
+                return;
+            }
+
+            // 2. Build dữ liệu Review
+            const reviewHead = document.getElementById('reviewHeader');
+            reviewHead.innerHTML = document.getElementById('tableHeader').innerHTML;
+            
+            const reviewBody = document.getElementById('reviewBody');
+            reviewBody.innerHTML = '';
+
+            const rows = document.getElementById('tableBody').querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                let tr = document.createElement('tr');
+                let tdId = `<td>${row.cells[0].innerHTML}</td>`;
+                let tdName = `<td class="text-left">${row.cells[1].innerHTML}</td>`;
+                
+                let tdTracking = '';
+                const btns = row.querySelectorAll('.emoji-btn');
+                btns.forEach(btn => {
+                    let status = btn.classList.contains('green') ? '<span style="color:var(--success); font-weight:bold;">✔ DONE</span>' : '<span style="color:var(--danger); font-weight:bold;">❌ MISSED</span>';
+                    tdTracking += `<td>${status}</td>`;
+                });
+
+                // Hiển thị note rõ ràng dù có hay không
+                const noteVal = row.querySelector('.note-input').value.trim();
+                const displayNote = noteVal ? noteVal : `<span class="empty-note">[No Note Entered]</span>`;
+                let tdNote = `<td>${displayNote}</td>`;
+
+                tr.innerHTML = tdId + tdName + tdTracking + tdNote;
+                reviewBody.appendChild(tr);
+            });
+
+            // 3. Hiển thị chế độ Full Screen Modal
+            document.getElementById('reviewModal').style.display = 'flex';
+            document.getElementById('confirmCheck').checked = false;
+            document.getElementById('submitBtn').disabled = true;
+        }
+
+        function closeReview() {
+            document.getElementById('reviewModal').style.display = 'none';
+        }
+
+        function changeZoom(step) {
+            zoomLevel += step;
+            if (zoomLevel < 12) zoomLevel = 12;
+            if (zoomLevel > 30) zoomLevel = 30;
+            document.getElementById('reviewContainer').style.fontSize = zoomLevel + 'px';
+        }
+
+        function toggleSubmitBtn() {
+            const isChecked = document.getElementById('confirmCheck').checked;
+            document.getElementById('submitBtn').disabled = !isChecked;
+        }
+
+        // POST DATA TO GOOGLE SHEET
+        async function submitData() {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerText = "Submitting Data...";
+            submitBtn.disabled = true;
+
+            const teacherName = document.getElementById('teacherName').value;
+            const rows = document.getElementById('tableBody').querySelectorAll('tr');
+            
+            let attendanceData = [];
+
+            rows.forEach(row => {
+                let studentId = row.getAttribute('data-id');
+                let studentName = row.getAttribute('data-name');
+                let tracking = {};
+                
+                row.querySelectorAll('.emoji-btn').forEach(btn => {
+                    let colName = btn.getAttribute('data-col');
+                    tracking[colName] = btn.classList.contains('green') ? 'DONE' : 'MISSED';
+                });
+
+                let note = row.querySelector('.note-input').value.trim();
+
+                attendanceData.push({
+                    studentId: studentId,
+                    studentName: studentName,
+                    tracking: tracking,
+                    note: note ? note : "None"
+                });
+            });
+
+            const payload = {
+                teacherName: teacherName,
+                className: currentClass,
+                attendance: attendanceData
+            };
+
+            try {
+                const response = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert("✅ Attendance submitted successfully!");
+                    window.location.reload(); // Tải lại trang sau khi hoàn tất
+                } else {
+                    alert("Error: " + result.error);
+                    submitBtn.innerText = "Confirm & Submit Data";
+                    submitBtn.disabled = false;
+                }
+            } catch (e) {
+                alert("Network error while submitting.");
+                submitBtn.innerText = "Confirm & Submit Data";
+                submitBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
+--------
+Tracking Attendance Google Sheets
+--------
+Sheet Students
+Student ID	Class	Full Name	Nickname
+SV001	Class A	John Doe	Johnny
+SV002	Class A	Jane Smith	Janie
+SV003	Class B	Michael Johnson	Mike
+SV004	Class B	Emily Davis	Em
+SV005	Class C	William Brown	Will
+Sheet Settings
+Notebook 📝	Coursebook 📘	Homework 🎒	Flashcards 📇
+TRUE	TRUE	TRUE	FALSE
+Sheet Records
+Timestamp	Teacher	Class	Student ID	Name	Tracking Data	Note
