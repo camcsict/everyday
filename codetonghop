@@ -941,3 +941,444 @@ Notebook 📝	Coursebook 📘	Homework 🎒	Flashcards 📇
 TRUE	TRUE	TRUE	FALSE
 Sheet Records
 Timestamp	Teacher	Class	Student ID	Name	Tracking Data	Note
+--------
+Comment Bank code.gs
+--------
+function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // 1. Lấy dữ liệu học sinh
+  var studentSheet = ss.getSheetByName("Students");
+  var sData = studentSheet.getDataRange().getValues();
+  var students = [];
+  
+  for(var i = 1; i < sData.length; i++) {
+    if(sData[i][0]) {
+      students.push({
+        id: sData[i][0],
+        class: sData[i][1],
+        fullName: sData[i][2],
+        nickname: sData[i][3],
+        gender: sData[i][4]
+      });
+    }
+  }
+
+  // 2. Lấy dữ liệu Comment Bank
+  var bankSheet = ss.getSheetByName("Bank");
+  var bData = bankSheet.getDataRange().getValues();
+  var commentBank = { adjectives: [], objectives: [], futures: [] };
+  
+  for(var j = 1; j < bData.length; j++) {
+    var category = String(bData[j][0]).trim();
+    var stars = parseInt(bData[j][1]);
+    var text = bData[j][2];
+    
+    if(category === "Adjective") commentBank.adjectives.push({text: text, stars: stars});
+    if(category === "Objective") commentBank.objectives.push({text: text, stars: stars});
+    if(category === "Future") commentBank.futures.push({text: text, stars: stars});
+  }
+
+  // Trả về JSON
+  return ContentService.createTextOutput(JSON.stringify({
+    success: true,
+    students: students,
+    commentBank: commentBank
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+--------
+Comment Bank giaodien.html
+--------
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Report Card Generator (Google Sheets Connected)</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --border: #E5E7EB;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --star: #F59E0B;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        body { background-color: var(--bg); color: var(--text-main); padding: 20px; }
+
+        .layout {
+            max-width: 1400px; margin: 0 auto;
+            display: grid; grid-template-columns: 3fr 2fr; gap: 25px;
+            align-items: start;
+        }
+
+        .card {
+            background: var(--card-bg); padding: 25px;
+            border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        /* Left Panel Controls */
+        .left-panel { display: flex; flex-direction: column; gap: 15px; }
+        
+        /* Right Panel (Sticky Preview) */
+        .right-panel { position: sticky; top: 20px; }
+
+        h2 { color: var(--primary); font-size: 1.4rem; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;}
+        h3 { font-size: 1rem; color: var(--text-muted); margin-bottom: 10px; }
+
+        label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.95rem; }
+        
+        select, input[type="text"], textarea {
+            width: 100%; padding: 12px; border: 1px solid var(--border);
+            border-radius: 8px; font-size: 1rem; margin-bottom: 15px;
+            transition: border-color 0.2s;
+        }
+        select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+
+        /* Star Rating Select */
+        .star-select { font-size: 1.1rem; font-weight: bold; color: var(--star); background: #FEF3C7; }
+
+        .checkbox-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+        .checkbox-label { display: flex; align-items: center; cursor: pointer; background: #F9FAFB; padding: 10px; border-radius: 6px; border: 1px solid var(--border); }
+        .checkbox-label:hover { background: #F3F4F6; }
+        .checkbox-label input { margin-right: 10px; width: 18px; height: 18px; }
+        .star-badge { color: var(--star); font-weight: bold; margin-right: 5px; }
+
+        /* Preview Area */
+        .preview-box {
+            background: #F8FAFC; border: 2px dashed #CBD5E1;
+            padding: 20px; border-radius: 8px; min-height: 250px;
+            font-size: 1.15rem; line-height: 1.6; color: #334155;
+            white-space: pre-wrap; margin-bottom: 20px;
+        }
+
+        button {
+            width: 100%; padding: 15px; background: var(--primary);
+            color: white; border: none; border-radius: 8px;
+            font-size: 1.1rem; font-weight: bold; cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover { background: var(--primary-hover); }
+
+        .student-info { background: #E0E7FF; color: #3730A3; padding: 12px 15px; border-radius: 8px; font-weight: bold; display: none; margin-bottom: 15px; }
+        .loading-text { color: var(--primary); font-weight: bold; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div class="layout">
+        <!-- LEFT PANEL: CONTROLS & SELECTION -->
+        <div class="left-panel">
+            
+            <!-- Step 1: Student & Rating -->
+            <div class="card">
+                <h2>👤 Step 1: Student & Performance Level</h2>
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>Select Student:</label>
+                        <select id="studentSelect" onchange="loadStudentData()">
+                            <option value="">-- Connecting to Database... --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Academic Term:</label>
+                        <select id="termSelect" onchange="generatePreview()">
+                            <option value="Term 1">Term 1</option>
+                            <option value="Term 2">Term 2</option>
+                            <option value="Term 3">Term 3</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Performance Rating:</label>
+                        <select id="starSelect" class="star-select" onchange="filterBanks()">
+                            <option value="5">5 ⭐⭐⭐⭐⭐ (Excellent)</option>
+                            <option value="4">4 ⭐⭐⭐⭐ (Good)</option>
+                            <option value="3" selected>3 ⭐⭐⭐ (Average)</option>
+                            <option value="2">2 ⭐⭐ (Below Average)</option>
+                            <option value="1">1 ⭐ (Needs Help)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="studentInfo" class="student-info">
+                    <span id="genderIcon"></span> <span id="displayName"></span> (<span id="studentClass"></span>)
+                </div>
+            </div>
+
+            <!-- Step 2: Adjectives -->
+            <div class="card">
+                <h2>✨ Step 2: Personality Traits (Max 3)</h2>
+                <div class="checkbox-group" id="adjectivesBox">
+                    <span class="loading-text">Loading traits...</span>
+                </div>
+            </div>
+
+            <!-- Step 3: Academic Objectives -->
+            <div class="card">
+                <h2>🎯 Step 3: Achievements & Future Goals</h2>
+                
+                <label>Academic Achievement:</label>
+                <select id="objectiveSelect" onchange="generatePreview()">
+                    <option value="">-- Waiting for database --</option>
+                </select>
+
+                <label>Future Development / Area of Improvement:</label>
+                <select id="futureSelect" onchange="generatePreview()">
+                    <option value="">-- Waiting for database --</option>
+                </select>
+            </div>
+
+            <!-- Step 4: Custom Comments -->
+            <div class="card">
+                <h2>✍️ Step 4: Additional Comments (Optional)</h2>
+                <label>Do you want to add any specific notes?</label>
+                <textarea id="customComment" rows="3" placeholder="Type any additional comments here... (This will be appended to the end of the report)" oninput="generatePreview()"></textarea>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: LIVE PREVIEW -->
+        <div class="right-panel">
+            <div class="card">
+                <h2>👁️ Live Report Preview</h2>
+                <div id="previewBox" class="preview-box">Loading Database... Please wait.</div>
+                <button onclick="copyReport()">📋 Copy Final Report</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- BƯỚC QUAN TRỌNG: DÁN WEB APP URL CỦA BẠN VÀO ĐÂY ---
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzHh_5lYlbZ9686jO4Xc_swdfT6aIYzjT05u3LR4XaPCD-aVqCtQ86HjWSQMhNBjIvE/exec"; 
+
+        // Khởi tạo biến trống để nhận dữ liệu từ Google Sheet
+        let students = [];
+        let commentBank = { adjectives: [], objectives: [], futures: [] };
+        let currentStudent = null;
+
+        // --- FETCH DỮ LIỆU TỪ GOOGLE SHEET KHI MỞ WEB ---
+        window.onload = async () => {
+            try {
+                const response = await fetch(WEB_APP_URL);
+                const data = await response.json();
+                
+                if (data.success) {
+                    students = data.students;
+                    commentBank = data.commentBank;
+                    
+                    // Đổ dữ liệu vào Dropdown Học sinh
+                    const studentSelect = document.getElementById('studentSelect');
+                    studentSelect.innerHTML = '<option value="">-- Choose Student --</option>';
+                    students.forEach(s => {
+                        studentSelect.innerHTML += `<option value="${s.id}">${s.fullName} (${s.id})</option>`;
+                    });
+                    
+                    document.getElementById('previewBox').innerText = "Select a student and options on the left to see the generated report here...";
+                    
+                    // Kích hoạt bộ lọc mặc định (3 sao)
+                    filterBanks();
+                }
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                document.getElementById('studentSelect').innerHTML = '<option value="">Error Loading Data</option>';
+                document.getElementById('previewBox').innerText = "Failed to connect to Google Sheets. Please check your WEB_APP_URL and deployment settings.";
+            }
+        };
+
+        // --- XỬ LÝ LOGIC UI ---
+        function loadStudentData() {
+            const selectedId = document.getElementById('studentSelect').value;
+            currentStudent = students.find(s => s.id === selectedId);
+
+            if (currentStudent) {
+                document.getElementById('studentInfo').style.display = 'block';
+                document.getElementById('genderIcon').innerText = currentStudent.gender === 'M' ? '👦' : '👧';
+                document.getElementById('displayName').innerText = currentStudent.nickname;
+                document.getElementById('studentClass').innerText = currentStudent.class;
+            } else {
+                document.getElementById('studentInfo').style.display = 'none';
+            }
+            generatePreview();
+        }
+
+        function filterBanks() {
+            if (commentBank.adjectives.length === 0) return; // Database chưa tải xong
+
+            const currentStar = parseInt(document.getElementById('starSelect').value);
+            const allowedStars = [currentStar - 1, currentStar, currentStar + 1]; // Bộ lọc tịnh tiến
+
+            // Lọc Adjectives
+            const adjBox = document.getElementById('adjectivesBox');
+            adjBox.innerHTML = '';
+            const filteredAdjs = commentBank.adjectives.filter(a => allowedStars.includes(a.stars));
+            filteredAdjs.forEach(adj => {
+                adjBox.innerHTML += `
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="${adj.text}" onchange="limitCheckboxes(this); generatePreview()">
+                        <span class="star-badge">${adj.stars}⭐</span> ${adj.text}
+                    </label>`;
+            });
+
+            // Lọc Objectives
+            const objSelect = document.getElementById('objectiveSelect');
+            objSelect.innerHTML = '<option value="">-- Select an achievement --</option>';
+            const filteredObjs = commentBank.objectives.filter(o => allowedStars.includes(o.stars));
+            filteredObjs.forEach(obj => {
+                objSelect.innerHTML += `<option value="${obj.text}">[${obj.stars}⭐] ${obj.text}</option>`;
+            });
+
+            // Lọc Futures
+            const futSelect = document.getElementById('futureSelect');
+            futSelect.innerHTML = '<option value="">-- Select a future goal --</option>';
+            const filteredFuts = commentBank.futures.filter(f => allowedStars.includes(f.stars));
+            filteredFuts.forEach(fut => {
+                futSelect.innerHTML += `<option value="${fut.text}">[${fut.stars}⭐] ${fut.text}</option>`;
+            });
+
+            generatePreview(); 
+        }
+
+        function limitCheckboxes(checkbox) {
+            const checkedBoxes = document.querySelectorAll('#adjectivesBox input:checked');
+            if (checkedBoxes.length > 3) {
+                checkbox.checked = false;
+                alert("Please select a maximum of 3 traits.");
+            }
+        }
+
+        function generatePreview() {
+            const previewBox = document.getElementById('previewBox');
+            
+            if (!currentStudent) {
+                previewBox.innerText = "Select a student and options on the left to see the generated report here...";
+                return;
+            }
+
+            // Thiết lập đại từ nhân xưng
+            const isMale = currentStudent.gender === 'M';
+            const proSubj = isMale ? "he" : "she";
+            const proSubjCap = isMale ? "He" : "She";
+            const proObj = isMale ? "him" : "her";
+            const proPoss = isMale ? "his" : "her";
+
+            const name = currentStudent.nickname;
+            const term = document.getElementById('termSelect').value;
+            const objective = document.getElementById('objectiveSelect').value;
+            let future = document.getElementById('futureSelect').value;
+            const customComment = document.getElementById('customComment').value.trim();
+
+            // Xử lý logic ghép chữ Adjectives (1 tính từ, 2 tính từ, 3 tính từ)
+            const checkedAdjs = Array.from(document.querySelectorAll('#adjectivesBox input:checked')).map(cb => cb.value);
+            let adjText = "";
+            if (checkedAdjs.length === 1) adjText = checkedAdjs[0];
+            else if (checkedAdjs.length === 2) adjText = `${checkedAdjs[0]} and ${checkedAdjs[1]}`;
+            else if (checkedAdjs.length === 3) adjText = `${checkedAdjs[0]}, ${checkedAdjs[1]}, and ${checkedAdjs[2]}`;
+
+            // Tự động thay thế Pronouns trong câu Future
+            if (future) {
+                future = future.replace(/\[he\/she\]/g, proSubj)
+                               .replace(/\[He\/She\]/g, proSubjCap)
+                               .replace(/\[him\/her\]/g, proObj)
+                               .replace(/\[his\/her\]/g, proPoss);
+            }
+
+            // Gắn kết thành đoạn văn hoàn chỉnh
+            let report = "";
+            
+            if (adjText) { report += `${name} is a ${adjText} student. `; } 
+            else { report += `${name} is a student in ${currentStudent.class}. `; }
+
+            if (objective) { report += `During ${term}, ${proSubj} ${objective}. `; }
+            if (future) { report += `${future} `; }
+            if (customComment) { report += `\n\n${customComment}`; }
+
+            previewBox.innerText = report.trim();
+        }
+
+        function copyReport() {
+            const previewBox = document.getElementById('previewBox');
+            const textToCopy = previewBox.innerText;
+            
+            if (!currentStudent || textToCopy.includes("Select a student")) {
+                alert("Nothing to copy yet!");
+                return;
+            }
+
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                alert("✅ Report successfully copied to clipboard!");
+            }).catch(err => {
+                alert("Failed to copy. Please try selecting the text manually.");
+            });
+        }
+    </script>
+</body>
+</html>
+--------
+Comment Bank Google Sheet
+--------
+Sheet Students
+--------
+ID	Class	Full Name	Nickname	Gender
+SV001	IGCSE-10A	Alexander Smith	Alex	M
+SV002	IGCSE-10A	Sophia Johnson	Sophie	F
+SV003	IGCSE-10B	Michael Chen	Mike	M
+SV004	IGCSE-10B	Emma Williams	Emma	F
+SV005	IGCSE-10C	David Brown	Dave	M
+SV006	IGCSE-10C	Olivia Taylor	Liv	F
+--------
+Sheet Bank
+--------
+Category	Stars	Text
+Adjective	5	outstanding
+Adjective	5	exceptional
+Adjective	4	proactive
+Adjective	4	diligent
+Adjective	3	focused
+Adjective	3	capable
+Adjective	2	easily distracted
+Adjective	1	struggling
+Objective	5	perfectly designed a fully functional relational database with zero errors
+Objective	5	developed highly responsive, professional web pages with flawless CSS styling
+Objective	4	successfully created user-friendly data entry forms and validation rules
+Objective	4	generated clear database reports, grouping and sorting data logically
+Objective	3	grasped the fundamentals of database structure but occasionally required guidance
+Objective	3	successfully built standard web pages, though CSS styling needs more refinement
+Objective	2	struggled slightly with database normalization and table relationships
+Objective	2	frequently encountered HTML syntax errors that hindered page formatting
+Objective	1	found the core concepts of relational databases very challenging to apply
+Future	5	Continuing this level of dedication will ensure top grades in the final IGCSE exam.
+Future	4	Moving forward, [he/she] should focus on refining complex search criteria for maximum marks.
+Future	3	To improve, [he/she] needs to pay closer attention to HTML syntax and closing tags.
+Future	2	With more dedicated practice at home, [his/her] confidence will undoubtedly grow.
+Future	1	Attending extra support sessions is highly recommended to grasp the database concepts.
+--------
+Công thức tạo mã ID
+Ký tự 1: Số 0
+
+Ký tự 2–3: Số thứ tự của học sinh (2 chữ số, ví dụ: 01)
+
+Ký tự 4–5: 2 chữ cái đầu tiên của 2 từ trong tên (lấy chữ cái đầu của Họ và Tên chính/Tên đệm)
+
+Ký tự 6–7: Số lượng ký tự có trong tên học sinh (bao gồm cả khoảng trắng, định dạng 2 chữ số)
+
+Kí tự 8-9: hai số bất kì
+
+---
+
+01 Alexander Smith
+
+02 Sophia Johnson
+
+03 Michael Chen
+
+04 Emma Williams
+
+05 David Brown
+
+06 Olivia Taylor  
+--------
