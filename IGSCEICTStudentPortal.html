@@ -166,6 +166,9 @@
     <script>
         // BƯỚC QUAN TRỌNG: Thay link của bạn vào biến này
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyWyJ_PF9FHH56KtCkP69i6wHuW3_oIGDPoAlQ3QMikVLRhQU3L-_E2GAXzwvag8Wqq/exec";
+        
+        // Khai báo biến lưu trữ bộ đếm thời gian
+        let loadingTimer; 
 
         function handleKeyPress(e) {
             if (e.key === 'Enter') {
@@ -190,7 +193,18 @@
             resultContainer.innerHTML = '';
             searchBtn.disabled = true;
             searchBtn.innerText = "Searching...";
-            showMessage("Loading data, please wait...", "loading");
+            
+            // Xóa bộ đếm cũ nếu có
+            if (loadingTimer) clearInterval(loadingTimer);
+            
+            // Khởi tạo và hiển thị đồng hồ đếm giây
+            let seconds = 0;
+            showMessage(`Loading data, please wait... ${seconds}s`, "loading");
+            
+            loadingTimer = setInterval(() => {
+                seconds++;
+                showMessage(`Loading data, please wait... ${seconds}s`, "loading");
+            }, 1000);
 
             try {
                 // Fetch data from Google Apps Script
@@ -200,12 +214,14 @@
                 if (json.error) {
                     showMessage(json.error, "error");
                 } else if (json.success) {
-                    showMessage("", "");
+                    showMessage("", ""); // Xóa dòng chữ loading khi thành công
                     displayData(json.data);
                 }
             } catch (error) {
                 showMessage("Connection error. Please try again later.", "error");
             } finally {
+                // Dừng đồng hồ đếm giây dù thành công hay lỗi
+                clearInterval(loadingTimer);
                 searchBtn.disabled = false;
                 searchBtn.innerText = "Search Information";
             }
