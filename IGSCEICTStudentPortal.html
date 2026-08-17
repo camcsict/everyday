@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Information Portal</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --border: #E5E7EB;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 480px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+
+        .search-box {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            background-color: var(--primary);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #9CA3AF;
+            cursor: not-allowed;
+        }
+
+        /* Results Area */
+        #resultContainer {
+            margin-top: 25px;
+            display: none;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 500;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            width: 40%;
+        }
+
+        .info-value {
+            font-weight: 500;
+            color: var(--text-main);
+            text-align: right;
+            width: 60%;
+            word-wrap: break-word;
+        }
+
+        .message {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .error { color: #DC2626; }
+        .loading { color: var(--primary); font-weight: 500; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h2>IGSCE ICT Student Portal</h2>
+            <p>Enter your ID to view your information</p>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="studentId" placeholder="e.g. 123456" autocomplete="off" onkeypress="handleKeyPress(event)">
+            <button id="searchBtn" onclick="searchData()">Search Information</button>
+        </div>
+
+        <div id="messageBox" class="message"></div>
+
+        <div id="resultContainer">
+            <!-- Data will be populated here dynamically -->
+        </div>
+    </div>
+
+    <script>
+        // BƯỚC QUAN TRỌNG: Thay link của bạn vào biến này
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyWyJ_PF9FHH56KtCkP69i6wHuW3_oIGDPoAlQ3QMikVLRhQU3L-_E2GAXzwvag8Wqq/exec";
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') {
+                searchData();
+            }
+        }
+
+        async function searchData() {
+            const idInput = document.getElementById('studentId').value.trim();
+            const messageBox = document.getElementById('messageBox');
+            const resultContainer = document.getElementById('resultContainer');
+            const searchBtn = document.getElementById('searchBtn');
+
+            if (!idInput) {
+                showMessage("Please enter your Student ID.", "error");
+                resultContainer.style.display = "none";
+                return;
+            }
+
+            // Reset UI
+            resultContainer.style.display = "none";
+            resultContainer.innerHTML = '';
+            searchBtn.disabled = true;
+            searchBtn.innerText = "Searching...";
+            showMessage("Loading data, please wait...", "loading");
+
+            try {
+                // Fetch data from Google Apps Script
+                const response = await fetch(`${WEB_APP_URL}?id=${encodeURIComponent(idInput)}`);
+                const json = await response.json();
+
+                if (json.error) {
+                    showMessage(json.error, "error");
+                } else if (json.success) {
+                    showMessage("", "");
+                    displayData(json.data);
+                }
+            } catch (error) {
+                showMessage("Connection error. Please try again later.", "error");
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.innerText = "Search Information";
+            }
+        }
+
+        function displayData(data) {
+            const resultContainer = document.getElementById('resultContainer');
+            resultContainer.innerHTML = '';
+
+            // Dynamically create rows for allowed columns
+            for (const [key, value] of Object.entries(data)) {
+                // Skip empty values for cleaner UI
+                if (value === "" || value === null) continue;
+
+                const row = document.createElement('div');
+                row.className = 'info-row';
+                
+                const label = document.createElement('div');
+                label.className = 'info-label';
+                label.innerText = key; // Column Header
+                
+                const val = document.createElement('div');
+                val.className = 'info-value';
+                
+                // Format dates nicely if they are ISO strings
+                if(typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}T/)) {
+                    const date = new Date(value);
+                    val.innerText = date.toLocaleDateString('en-GB');
+                } else {
+                    val.innerText = value;
+                }
+
+                row.appendChild(label);
+                row.appendChild(val);
+                resultContainer.appendChild(row);
+            }
+
+            resultContainer.style.display = "block";
+        }
+
+        function showMessage(text, type) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.innerText = text;
+            messageBox.className = "message " + type;
+        }
+    </script>
+</body>
+</html>
