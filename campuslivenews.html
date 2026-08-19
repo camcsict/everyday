@@ -128,6 +128,17 @@
                 <div id="hotNewsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8"></div>
             </section>
 
+            <!-- IGCSE NEWS SECTION -->
+            <section id="igsceNewsSection" class="mb-14 hidden">
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xl">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">IGCSE News</h2>
+                </div>
+                <div id="igsceNewsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8"></div>
+            </section>
+
             <!-- REGULAR FEED -->
             <section>
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 space-y-3 sm:space-y-0">
@@ -471,6 +482,7 @@
             
             const isHome = scope === 'General';
             const hotSection = document.getElementById('hotNewsSection');
+            const igsceSection = document.getElementById('igsceNewsSection');
             const sectionTitle = document.getElementById('sectionTitle');
             const scopeBadge = document.getElementById('currentScopeBadge');
             const logoutBtn = document.getElementById('logoutClassBtn');
@@ -483,19 +495,32 @@
             if (isHome) logoutBtn.classList.add('hidden');
             else logoutBtn.classList.remove('hidden');
 
+            // Các hàm xác định phân loại tin tức
             const isTrendingItem = (item) => String(item.Category).trim().toUpperCase() === 'TRENDING';
+            const isIgsceItem = (item) => String(item.Category).trim().toUpperCase() === 'IGSCE' || String(item.Category).trim().toUpperCase() === 'IGCSE';
 
             if (isHome) {
+                // Hiển thị section Trending và IGCSE ở trang General
                 hotSection.classList.remove('hidden');
+                igsceSection.classList.remove('hidden');
+
+                // Lọc và Render Trending News
                 const hotItems = appData.news.filter(x => isTrendingItem(x) && x.Class === 'General');
                 renderCardList(hotItems, 'hotNewsContainer', true, 2);
+
+                // Lọc và Render IGCSE News
+                const igsceItems = appData.news.filter(x => isIgsceItem(x) && x.Class === 'General');
+                renderCardList(igsceItems, 'igsceNewsContainer', false, 6); // tối đa 6 tin
             } else {
+                // Ẩn Trending và IGCSE khi vào trang riêng của Class
                 hotSection.classList.add('hidden');
+                igsceSection.classList.add('hidden');
             }
 
+            // Lọc và Render Recent Feed (Bỏ qua tin Trending và IGCSE đã hiển thị ở trên)
             const classFeed = isHome 
-                ? appData.news.filter(x => !isTrendingItem(x) && x.Class === 'General')
-                : appData.news.filter(x => !isTrendingItem(x) && x.Class === scope); 
+                ? appData.news.filter(x => !isTrendingItem(x) && !isIgsceItem(x) && x.Class === 'General')
+                : appData.news.filter(x => !isTrendingItem(x) && !isIgsceItem(x) && x.Class === scope); 
 
             renderCardList(classFeed, 'newsContainer', false, 6);
         }
@@ -505,7 +530,8 @@
             const noNewsMsg = document.getElementById('noNewsMsg');
             container.innerHTML = '';
 
-            if (!isHot && containerId === 'newsContainer') {
+            // Cập nhật class Layout (Grid/List) cho các khu vực hiển thị tiêu chuẩn (Recent và IGCSE)
+            if (!isHot && (containerId === 'newsContainer' || containerId === 'igsceNewsContainer')) {
                 if (currentViewMode === 'list') {
                     container.className = 'flex flex-col gap-6 sm:gap-8';
                 } else {
@@ -513,11 +539,12 @@
                 }
             }
 
-            if (!isHot && items.length === 0) {
+            // Hiển thị tin nhắn "trống" chỉ dành cho Recent Feed
+            if (!isHot && items.length === 0 && containerId === 'newsContainer') {
                 noNewsMsg.classList.remove('hidden');
                 return;
             }
-            if(!isHot) noNewsMsg.classList.add('hidden');
+            if(!isHot && containerId === 'newsContainer') noNewsMsg.classList.add('hidden');
 
             let sortedItems = items.slice().map((item, index) => ({...item, originalIndex: index}));
             sortedItems.sort((a, b) => {
@@ -529,8 +556,13 @@
 
             const limitedItems = sortedItems.slice(0, limit);
 
+            // Ẩn container nếu IGCSE không có tin nào (Để giao diện sạch sẽ)
+            if (containerId === 'igsceNewsContainer' && limitedItems.length === 0) {
+                document.getElementById('igsceNewsSection').classList.add('hidden');
+            }
+
             limitedItems.forEach(item => {
-                const isList = (!isHot && currentViewMode === 'list' && containerId === 'newsContainer');
+                const isList = (!isHot && currentViewMode === 'list' && (containerId === 'newsContainer' || containerId === 'igsceNewsContainer'));
 
                 const cardWrapperClass = isList 
                     ? 'bg-white rounded-3xl overflow-hidden card-modern flex flex-col sm:flex-row h-full border border-slate-100 relative'
