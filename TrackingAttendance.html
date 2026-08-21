@@ -276,10 +276,22 @@
         let currentClass = "";
         let zoomLevel = 16; // Font size base
 
+        // Hàm hỗ trợ đếm thời gian (1s, 2s, 3s...)
+        function startTimer(buttonElement, baseText) {
+            let seconds = 0;
+            buttonElement.innerText = `${baseText} ${seconds}s`;
+            return setInterval(() => {
+                seconds++;
+                buttonElement.innerText = `${baseText} ${seconds}s`;
+            }, 1000);
+        }
+
         // Tải danh sách lớp khi mở trang
         window.onload = async () => {
             const loadBtn = document.getElementById('loadBtn');
-            loadBtn.innerText = "Connecting...";
+            loadBtn.disabled = true; // Chặn click khi đang connect
+            const timerId = startTimer(loadBtn, "Connecting...");
+
             try {
                 const response = await fetch(WEB_APP_URL);
                 const json = await response.json();
@@ -292,9 +304,14 @@
                         opt.innerText = cls;
                         select.appendChild(opt);
                     });
+                    clearInterval(timerId); // Dừng đếm giờ
                     loadBtn.innerText = "Load Students";
+                    loadBtn.disabled = false;
                 }
             } catch (err) {
+                clearInterval(timerId); // Dừng đếm giờ khi lỗi
+                loadBtn.innerText = "Load Data";
+                loadBtn.disabled = false;
                 document.getElementById('errorMsg').innerText = "Connection failed. Please check the URL.";
                 document.getElementById('errorMsg').style.display = 'block';
             }
@@ -446,7 +463,7 @@
         // POST DATA TO GOOGLE SHEET
         async function submitData() {
             const submitBtn = document.getElementById('submitBtn');
-            submitBtn.innerText = "Submitting Data...";
+            const timerId = startTimer(submitBtn, "Submitting Data...");
             submitBtn.disabled = true;
 
             const teacherName = document.getElementById('teacherName').value;
@@ -488,6 +505,8 @@
                 
                 const result = await response.json();
                 
+                clearInterval(timerId); // Dừng đếm giờ
+                
                 if (result.success) {
                     alert("✅ Attendance submitted successfully!");
                     window.location.reload(); // Tải lại trang sau khi hoàn tất
@@ -497,6 +516,7 @@
                     submitBtn.disabled = false;
                 }
             } catch (e) {
+                clearInterval(timerId); // Dừng đếm giờ khi lỗi
                 alert("Network error while submitting.");
                 submitBtn.innerText = "Confirm & Submit Data";
                 submitBtn.disabled = false;
