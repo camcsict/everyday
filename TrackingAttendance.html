@@ -73,6 +73,9 @@
         .btn-success { background: var(--success); }
         .btn-success:hover { background: #059669; }
 
+        .btn-danger { background: var(--danger); }
+        .btn-danger:hover { background: #DC2626; }
+
         /* Table */
         .table-responsive {
             overflow-x: auto;
@@ -200,7 +203,7 @@
         <h2>📝 Daily Attendance & Tracking</h2>
         
         <div class="setup-section">
-            <input type="text" id="teacherName" placeholder="Enter Teacher's Name">
+            <input type="text" id="teacherName" placeholder="Enter Teacher/Student's Name">
             <select id="classSelect">
                 <option value="">-- Select Class --</option>
                 <!-- Classes will be loaded here -->
@@ -212,7 +215,10 @@
 
         <div id="mainContent" style="display: none;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-                <button onclick="markAllGreen()">Mark All as Done (Green)</button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-success" onclick="markAllGreen()">Mark All as Done (Green)</button>
+                    <button class="btn-danger" onclick="markAllRed()">Mark All as Missing (Red)</button>
+                </div>
                 <button class="btn-success" onclick="openReview()">Review & Submit</button>
             </div>
 
@@ -388,6 +394,13 @@
             document.querySelectorAll('.emoji-btn').forEach(btn => {
                 btn.classList.remove('red');
                 btn.classList.add('green');
+            });
+        }
+
+        function markAllRed() {
+            document.querySelectorAll('.emoji-btn').forEach(btn => {
+                btn.classList.remove('green');
+                btn.classList.add('red');
             });
         }
 
