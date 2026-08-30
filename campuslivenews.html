@@ -44,9 +44,73 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* KIỂU DÁNG HIỆU ỨNG LÁ MÙA THU */
+        @keyframes fall {
+            0% { top: -10%; }
+            100% { top: 110%; }
+        }
+        @keyframes sway-1 {
+            0% { transform: translateX(-30px) rotate(-45deg); }
+            100% { transform: translateX(30px) rotate(45deg); }
+        }
+        @keyframes sway-2 {
+            0% { transform: translateX(30px) rotate(45deg); }
+            100% { transform: translateX(-30px) rotate(-45deg); }
+        }
     </style>
 </head>
 <body class="antialiased">
+
+    <!-- ============================================== -->
+    <!-- THANH KÉO ĐIỀU CHỈNH TỐC ĐỘ LÁ RƠI TRÁI MÀN HÌNH -->
+    <!-- ============================================== -->
+    <div class="fixed left-3 sm:left-6 top-1/2 -translate-y-1/2 z-[45] flex flex-col items-center bg-white/80 backdrop-blur-md p-3 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 hover:bg-white transition-colors duration-300 group">
+        <i class="fas fa-wind text-blue-500 mb-5 text-lg drop-shadow-sm transition-transform group-hover:scale-110" title="Fast"></i>
+        <div class="relative h-40 w-6">
+            <input type="range" id="leafSpeedSlider" min="1" max="10" value="4" oninput="updateLeafSpeed()" 
+                   class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-2 bg-slate-200 rounded-full appearance-none cursor-pointer -rotate-90 accent-blue-600 hover:accent-blue-700 transition-all focus:outline-none" title="Adjust leaf falling speed">
+        </div>
+        <i class="fas fa-leaf text-blue-500 mt-5 text-lg drop-shadow-sm transition-transform group-hover:scale-110" title="Slow"></i>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- POPUP 1: HELLO SEPTEMBER (Nằm trên cùng) -->
+    <!-- ============================================== -->
+    <div id="popup1" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[210] flex items-center justify-center p-4">
+        <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl text-center transform transition-all border-b-4 border-blue-500 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-blue-500 to-blue-300 -z-10"></div>
+            
+            <!-- [ADMIN] NHẬP LINK HÌNH ẢNH POPUP 1 TẠI ĐÂY -->
+            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSVKAxmKrGzqxqfdcc79K0NuoCvnLC5erOvfQf5S8HG_g&s=10" alt="Thumbnail" class="w-28 h-28 object-cover rounded-full mx-auto mt-4 mb-4 shadow-lg border-4 border-white">
+            
+            <h3 class="text-3xl font-black text-slate-900 mb-2">Sua s'dei សួស្តី September</h3>
+            <p class="text-sm font-medium text-slate-500 mb-8">Ready for a brand new month!</p>
+            <button onclick="closePopup1()" class="w-full py-4 rounded-2xl font-bold text-lg bg-blue-600 text-white hover:bg-blue-700 transition shadow-xl shadow-blue-600/30">Sua s'dei សួស្តី!</button>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- POPUP 2: QUESTION (Nằm dưới Popup 1) -->
+    <!-- ============================================== -->
+    <div id="popup2" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+        <div class="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl text-center transform transition-all border-b-4 border-blue-500 relative overflow-hidden">
+             
+            <!-- [ADMIN] NHẬP LINK HÌNH ẢNH POPUP 2 TẠI ĐÂY -->
+            <div class="mx-auto w-fit max-w-full bg-slate-50 rounded-2xl mb-6 overflow-hidden shadow-inner border border-slate-100">
+                <img src="https://core-docs.s3.amazonaws.com/kansas_cusd_%233_ar/article/image/large_799a8040-9431-43a3-b542-0d42dc68ac0d.jpeg" 
+                     alt="Thumbnail" 
+                     class="max-w-full h-auto max-h-60 object-cover">
+            </div>
+            
+            <h3 class="text-2xl font-black text-slate-900 mb-3">August Recap</h3>
+            <p class="text-base font-medium text-slate-600 mb-8">Ready for a look at our August recap?</p>
+            <div class="flex space-x-4">
+                <button onclick="closePopup2()" class="flex-1 py-4 rounded-2xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">No</button>
+                <button onclick="goToGoogle()" class="flex-1 py-4 rounded-2xl font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow-xl shadow-blue-600/30">Yes</button>
+            </div>
+        </div>
+    </div>
 
     <!-- GLOBAL LOADING OVERLAY -->
     <div id="globalLoader" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex flex-col items-center justify-center hidden">
@@ -83,21 +147,19 @@
                         <i class="fas fa-layer-group text-xl sm:text-2xl"></i>
                     </div>
                     <div class="ml-3 sm:ml-4">
-                        <span class="font-extrabold text-xl sm:text-2xl tracking-tight text-slate-900">Campus<span class="text-blue-600">News</span></span>
-                        <p class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest hidden sm:block">School Information Portal</p>
+                        <span class="font-extrabold text-xl sm:text-2xl tracking-tight text-slate-900">NIRATech<span class="text-blue-600">News</span></span>
+                        <p class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest hidden sm:block">ICT Information Portal</p>
                     </div>
                 </div>
                 
                 <!-- Actions -->
                 <div class="flex space-x-2 sm:space-x-4 items-center">
-                    
                     <!-- CUSTOM DROPDOWN -->
                     <div class="relative" id="customDropdown">
                         <button onclick="toggleDropdown(event)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm sm:text-base rounded-xl py-2.5 px-4 font-bold transition flex items-center justify-center gap-2 w-max min-w-[140px]">
                             <span id="dropdownSelected" class="pointer-events-none whitespace-nowrap">🌐 School Wide</span>
                             <i class="fas fa-chevron-down text-xs pointer-events-none text-slate-400 shrink-0"></i>
                         </button>
-                        
                         <div id="dropdownMenu" class="hidden absolute right-0 mt-2 w-[220px] bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50 dropdown-enter py-1">
                             <!-- Các option được render qua JS -->
                         </div>
@@ -136,7 +198,6 @@
                     </h2>
                     
                     <div class="flex flex-wrap items-center gap-3">
-                        
                         <!-- VIEW MODE TOGGLE -->
                         <div class="bg-slate-200/60 p-1 rounded-xl flex items-center shadow-inner">
                             <button onclick="setViewMode('grid')" id="btnGrid" class="px-3.5 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm font-medium transition" title="Grid View">
@@ -279,7 +340,139 @@
         </div>
     </div>
 
+    <!-- SCRIPT XỬ LÝ -->
     <script>
+        // =========================================================================
+        // 🎨 BẢNG ĐIỀU KHIỂN MÀU SẮC CHO ADMIN (HỖ TRỢ MÃ HEX)
+        // Bạn chỉ cần nhập mã HEX (VD: '#FF5733', '#10B981', '#F59E0B')
+        // Hệ thống sẽ tự động tính toán và tạo ra một dải màu hoàn chỉnh
+        // =========================================================================
+        const THEME_HEX = '#D35400'; 
+        // =========================================================================
+
+        // Logic tự động tính toán các dải màu sáng/tối từ mã HEX gốc
+        function generatePalette(hex) {
+            hex = String(hex).replace('#', '');
+            if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+            if (!/^[0-9A-F]{6}$/i.test(hex)) hex = '3B82F6'; // Fallback nếu nhập mã sai
+            
+            const getShade = (factor) => {
+                const f = parseInt(hex, 16);
+                const t = factor < 0 ? 0 : 255;
+                const p = Math.abs(factor);
+                const R = f >> 16, G = (f >> 8) & 0x00FF, B = f & 0x0000FF;
+                return "#" + (
+                    0x1000000 + 
+                    (Math.round((t - R) * p) + R) * 0x10000 + 
+                    (Math.round((t - G) * p) + G) * 0x100 + 
+                    (Math.round((t - B) * p) + B)
+                ).toString(16).slice(1);
+            };
+
+            return {
+                50: getShade(0.9), 100: getShade(0.8), 200: getShade(0.6), 300: getShade(0.4),
+                400: getShade(0.2), 500: '#' + hex, 600: getShade(-0.2), 700: getShade(-0.4),
+                800: getShade(-0.6), 900: getShade(-0.8),
+            };
+        }
+
+        // Đẩy màu tự tính toán vào hệ thống lõi của Tailwind
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        customtheme: generatePalette(THEME_HEX)
+                    }
+                }
+            }
+        };
+
+        // Biến nội bộ giúp logic cũ tiếp tục vận hành mà không cần can thiệp thêm
+        const THEME_COLOR = 'customtheme';
+
+        document.addEventListener("DOMContentLoaded", () => {
+            // Khởi tạo lá mùa thu
+            createLeaves();
+
+            // Đổi toàn bộ các class mang màu gốc 'blue' sang màu 'customtheme' mới tạo
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null, false);
+            let node;
+            while ((node = walker.nextNode())) {
+                if (node.className && typeof node.className === 'string') {
+                    node.className = node.className.replace(/(^|\s|:)(bg|text|border|ring|shadow|from|to|via|accent)-blue-/g, `$1$2-${THEME_COLOR}-`);
+                }
+            }
+        });
+
+        // TẠO HỆ THỐNG LÁ MÙA THU
+        function createLeaves() {
+            const container = document.createElement('div');
+            container.id = 'leafContainer';
+            // z-[30] Đặt lá nằm ẩn sau thanh Header menu tạo chiều sâu 3D tinh tế
+            container.className = 'fixed inset-0 pointer-events-none z-[30] overflow-hidden';
+            document.body.appendChild(container);
+
+            const leafTypes = ['🍂', '🍁'];
+            const leafCount = 25; 
+
+            for (let i = 0; i < leafCount; i++) {
+                const leaf = document.createElement('div');
+                leaf.className = 'absolute text-xl sm:text-2xl opacity-75 drop-shadow-md select-none leaf-item';
+                leaf.innerText = leafTypes[Math.floor(Math.random() * leafTypes.length)];
+                
+                leaf.style.left = `${Math.random() * 100}vw`;
+                leaf.style.top = `-10%`;
+                
+                const swayType = Math.random() > 0.5 ? 'sway-1' : 'sway-2';
+                leaf.style.animationName = `fall, ${swayType}`;
+                leaf.style.animationTimingFunction = `linear, ease-in-out`;
+                leaf.style.animationIterationCount = `infinite, infinite`;
+                leaf.style.animationDirection = `normal, alternate`;
+                
+                const fallDelay = Math.random() * 20;
+                const swayDelay = Math.random() * 5;
+                leaf.style.animationDelay = `${fallDelay}s, ${swayDelay}s`;
+                
+                const baseFall = 10 + Math.random() * 10;
+                const swayDuration = 2 + Math.random() * 3;
+                
+                leaf.dataset.baseFall = baseFall;
+                leaf.dataset.swayDuration = swayDuration;
+                
+                container.appendChild(leaf);
+            }
+            updateLeafSpeed(); // Áp dụng tốc độ mặc định ban đầu
+        }
+
+        // HÀM CẬP NHẬT TỐC ĐỘ LÁ TỪ THANH KÉO (SLIDER)
+        function updateLeafSpeed() {
+            const speedVal = parseInt(document.getElementById('leafSpeedSlider').value);
+            // Xử lý công thức: kéo cao lên (speedVal cao) -> hệ số nhân nhỏ -> lá rơi nhanh
+            const mult = (11 - speedVal) / 5;
+            
+            const leaves = document.querySelectorAll('.leaf-item');
+            leaves.forEach(leaf => {
+                const baseFall = parseFloat(leaf.dataset.baseFall);
+                const swayDuration = parseFloat(leaf.dataset.swayDuration);
+                
+                leaf.style.animationDuration = `${baseFall * mult}s, ${swayDuration}s`;
+            });
+        }
+
+        // Hàm xử lý Popup 1 và 2
+        function closePopup1() {
+            document.getElementById('popup1').classList.add('hidden');
+        }
+
+        function closePopup2() {
+            document.getElementById('popup2').classList.add('hidden');
+        }
+
+        function goToGoogle() {
+            window.open('https://camcsict.github.io/everyday/portfolio.html', '_blank');
+            closePopup2();
+        }
+
         // DÁN WEB APP URL CỦA BẠN VÀO ĐÂY
         const API_URL = 'https://script.google.com/macros/s/AKfycbwBP32ja5dJBat0jID9wViIy7PMdNd8iyXk8-sw3NHr96fIt2VmHPwauSM3nKsVT9_-4w/exec';
 
@@ -290,11 +483,8 @@
         let currentActiveScope = 'General';
         
         let currentViewMode = 'grid';
-
         let timerInterval;
         let secondsWaited = 0;
-        
-        // Trạng thái cho chế độ xem toàn màn hình của Preview Modal
         let isPreviewFullScreen = false;
 
         function showLoading(message) {
@@ -354,10 +544,10 @@
             const menu = document.getElementById('dropdownMenu');
             const studentClassSelector = document.getElementById('studentClass');
             
-            let menuHTML = `<div class="cursor-pointer px-5 py-3 hover:bg-blue-50 hover:text-blue-600 font-bold text-slate-700 flex items-center transition" onclick="selectClassOption('General', '🌐 School Wide')">🌐 School Wide</div>`;
+            let menuHTML = `<div class="cursor-pointer px-5 py-3 hover:bg-${THEME_COLOR}-50 hover:text-${THEME_COLOR}-600 font-bold text-slate-700 flex items-center transition" onclick="selectClassOption('General', '🌐 School Wide')">🌐 School Wide</div>`;
             
             classes.forEach(cls => {
-                menuHTML += `<div class="cursor-pointer px-5 py-3 hover:bg-blue-50 hover:text-blue-600 font-bold text-slate-700 flex items-center transition border-t border-slate-50" onclick="selectClassOption('${cls}', '🚀 ${cls}')">🚀 ${cls}</div>`;
+                menuHTML += `<div class="cursor-pointer px-5 py-3 hover:bg-${THEME_COLOR}-50 hover:text-${THEME_COLOR}-600 font-bold text-slate-700 flex items-center transition border-t border-slate-50" onclick="selectClassOption('${cls}', '🚀 ${cls}')">🚀 ${cls}</div>`;
                 studentClassSelector.innerHTML += `<option value="${cls}">${cls}</option>`;
             });
             menu.innerHTML = menuHTML;
@@ -469,11 +659,11 @@
             const btnList = document.getElementById('btnList');
             
             if (mode === 'grid') {
-                btnGrid.className = 'px-3.5 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm font-medium transition';
-                btnList.className = 'px-3.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 font-medium transition';
+                btnGrid.className = `px-3.5 py-1.5 rounded-lg bg-white text-${THEME_COLOR}-600 shadow-sm font-medium transition`;
+                btnList.className = `px-3.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 font-medium transition`;
             } else {
-                btnList.className = 'px-3.5 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm font-medium transition';
-                btnGrid.className = 'px-3.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 font-medium transition';
+                btnList.className = `px-3.5 py-1.5 rounded-lg bg-white text-${THEME_COLOR}-600 shadow-sm font-medium transition`;
+                btnGrid.className = `px-3.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 font-medium transition`;
             }
             
             renderView(currentActiveScope);
@@ -492,7 +682,7 @@
 
             sectionTitle.innerHTML = isHome 
           ? `<div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl">
+                <div class="w-10 h-10 rounded-full bg-${THEME_COLOR}-100 text-${THEME_COLOR}-600 flex items-center justify-center text-xl">
                     <i class="fas fa-desktop"></i>
                 </div>
                 <span>Computing</span>
@@ -502,29 +692,23 @@
             if (isHome) logoutBtn.classList.add('hidden');
             else logoutBtn.classList.remove('hidden');
 
-            // Các hàm xác định phân loại tin tức
             const isTrendingItem = (item) => String(item.Category).trim().toUpperCase() === 'TRENDING';
             const isIgsceItem = (item) => String(item.Category).trim().toUpperCase() === 'IGSCE' || String(item.Category).trim().toUpperCase() === 'IGCSE';
 
             if (isHome) {
-                // Hiển thị section Trending và IGCSE ở trang General
                 hotSection.classList.remove('hidden');
                 igsceSection.classList.remove('hidden');
 
-                // Lọc và Render Trending News
                 const hotItems = appData.news.filter(x => isTrendingItem(x) && x.Class === 'General');
                 renderCardList(hotItems, 'hotNewsContainer', true, 2);
 
-                // Lọc và Render IGCSE News
                 const igsceItems = appData.news.filter(x => isIgsceItem(x) && x.Class === 'General');
-                renderCardList(igsceItems, 'igsceNewsContainer', false, 6); // tối đa 6 tin
+                renderCardList(igsceItems, 'igsceNewsContainer', false, 6);
             } else {
-                // Ẩn Trending và IGCSE khi vào trang riêng của Class
                 hotSection.classList.add('hidden');
                 igsceSection.classList.add('hidden');
             }
 
-            // Lọc và Render Recent Feed (Bỏ qua tin Trending và IGCSE đã hiển thị ở trên)
             const classFeed = isHome 
                 ? appData.news.filter(x => !isTrendingItem(x) && !isIgsceItem(x) && x.Class === 'General')
                 : appData.news.filter(x => !isTrendingItem(x) && !isIgsceItem(x) && x.Class === scope); 
@@ -537,7 +721,6 @@
             const noNewsMsg = document.getElementById('noNewsMsg');
             container.innerHTML = '';
 
-            // Cập nhật class Layout (Grid/List) cho các khu vực hiển thị tiêu chuẩn (Recent và IGCSE)
             if (!isHot && (containerId === 'newsContainer' || containerId === 'igsceNewsContainer')) {
                 if (currentViewMode === 'list') {
                     container.className = 'flex flex-col gap-6 sm:gap-8';
@@ -546,7 +729,6 @@
                 }
             }
 
-            // Hiển thị tin nhắn "trống" chỉ dành cho Recent Feed
             if (!isHot && items.length === 0 && containerId === 'newsContainer') {
                 noNewsMsg.classList.remove('hidden');
                 return;
@@ -563,7 +745,6 @@
 
             const limitedItems = sortedItems.slice(0, limit);
 
-            // Ẩn container nếu IGCSE không có tin nào (Để giao diện sạch sẽ)
             if (containerId === 'igsceNewsContainer' && limitedItems.length === 0) {
                 document.getElementById('igsceNewsSection').classList.add('hidden');
             }
@@ -590,8 +771,8 @@
                 const formattedDate = formatDateCustom(item.Date);
                 
                 const btnClass = isList 
-                    ? 'inline-flex items-center justify-center w-full sm:w-max sm:px-6 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold py-3 rounded-xl transition text-sm mt-auto'
-                    : 'inline-flex items-center justify-center w-full bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold py-3 rounded-xl transition text-sm mt-auto';
+                    ? `inline-flex items-center justify-center w-full sm:w-max sm:px-6 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold py-3 rounded-xl transition text-sm mt-auto`
+                    : `inline-flex items-center justify-center w-full bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold py-3 rounded-xl transition text-sm mt-auto`;
 
                 const card = `
                     <div class="${cardWrapperClass}">
@@ -614,7 +795,7 @@
 
         function generateMediaEmbed(type, url, isHot, isList = false) {
             let heightClass = isHot ? 'h-64 sm:h-72' : 'h-48 sm:h-56';
-            let mediaStyle = isList ? 'w-full h-56 sm:absolute sm:inset-0 sm:h-full object-cover' : `w-full object-cover ${heightClass}`;
+            let mediaStyle = isList ? `w-full h-56 sm:absolute sm:inset-0 sm:h-full object-cover` : `w-full object-cover ${heightClass}`;
             
             type = String(type).toLowerCase().trim();
             if (type === 'youtube') {
@@ -639,7 +820,6 @@
         const confirmRules = document.getElementById('confirmRules');
         const finalSubmitBtn = document.getElementById('finalSubmitBtn');
 
-        // Logic Mở rộng/Thu nhỏ Preview Modal
         function toggleFullScreenPreview() {
             const previewBox = document.getElementById('previewBox');
             const contentArea = document.getElementById('previewContentArea');
@@ -648,17 +828,15 @@
             isPreviewFullScreen = !isPreviewFullScreen;
             
             if (isPreviewFullScreen) {
-                // Phóng to
                 previewBox.classList.remove('max-w-lg', 'sm:rounded-3xl', 'sm:max-h-[95vh]');
                 previewBox.classList.add('max-w-full', 'w-full', 'h-full', 'rounded-none');
                 
                 contentArea.classList.remove('max-h-[45vh]');
-                contentArea.classList.add('flex-grow'); // Để nó chiếm phần diện tích còn lại
+                contentArea.classList.add('flex-grow'); 
                 
                 icon.classList.remove('fa-expand');
                 icon.classList.add('fa-compress');
             } else {
-                // Thu nhỏ về Modal bình thường
                 previewBox.classList.remove('max-w-full', 'w-full', 'h-full', 'rounded-none');
                 previewBox.classList.add('max-w-lg', 'sm:rounded-3xl', 'sm:max-h-[95vh]');
                 
@@ -686,7 +864,6 @@
             finalSubmitBtn.disabled = true;
             finalSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
             
-            // Trả về kích thước cũ nếu đang bật Fullscreen rồi bấm Đóng
             if (isPreviewFullScreen) {
                 toggleFullScreenPreview();
             }
