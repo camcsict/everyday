@@ -35,10 +35,15 @@
         .container {
             background-color: var(--card-bg);
             width: 100%;
-            max-width: 480px;
+            max-width: 480px; 
             padding: 30px;
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: max-width 0.4s ease-in-out; 
+        }
+
+        .container.expanded {
+            max-width: 800px;
         }
 
         .header {
@@ -89,7 +94,7 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
         }
 
         button:hover {
@@ -101,36 +106,119 @@
             cursor: not-allowed;
         }
 
-        /* Results Area */
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            margin-top: 20px;
+        }
+
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+
         #resultContainer {
             margin-top: 25px;
             display: none;
         }
 
-        .info-row {
+        .top-info {
+            background: #F8FAFC;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .top-info-row {
             display: flex;
             justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--border);
+            align-items: center;
+            border-bottom: 1px dashed #CBD5E1;
+            padding-bottom: 10px;
         }
 
-        .info-row:last-child {
+        .top-info-row:last-child {
             border-bottom: none;
+            padding-bottom: 0;
         }
 
-        .info-label {
-            font-weight: 500;
+        .top-info-row .info-label {
             color: var(--text-muted);
-            font-size: 0.9rem;
-            width: 40%;
+            font-weight: 500;
         }
 
-        .info-value {
-            font-weight: 500;
+        .top-info-row .info-value {
+            font-weight: 600;
+            font-size: 1.1rem;
             color: var(--text-main);
             text-align: right;
-            width: 60%;
             word-wrap: break-word;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .name-highlight {
+            color: var(--primary) !important;
+            font-size: 1.2rem !important;
+        }
+
+        .grid-results {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        @media (min-width: 600px) {
+            .grid-results {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .grid-item {
+            background: #FFFFFF;
+            border: 1px solid var(--border);
+            padding: 16px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            transition: box-shadow 0.2s;
+        }
+
+        .grid-item:hover {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .grid-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        /* Giữ nguyên đúng định dạng xuống dòng chuẩn từ file Sheet gốc */
+        .grid-value {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-main);
+            word-wrap: break-word;
+            word-break: break-word;
+            white-space: pre-wrap; /* Giữ chuẩn ngắt dòng từ Google Sheet */
+            line-height: 1.5;
+        }
+
+        .percentage-badge {
+            display: inline-block;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 6px;
+            margin-top: 2px;
+            font-weight: bold;
         }
 
         .message {
@@ -145,7 +233,7 @@
 </head>
 <body>
 
-    <div class="container">
+    <div class="container" id="mainContainer">
         <div class="header">
             <h2>IGCSE ICT Student Portal</h2>
             <p>Enter your key to view your information</p>
@@ -164,11 +252,9 @@
     </div>
 
     <script>
-        // URL
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyWyJ_PF9FHH56KtCkP69i6wHuW3_oIGDPoAlQ3QMikVLRhQU3L-_E2GAXzwvag8Wqq/exec";
         
-        // Khai báo biến lưu trữ bộ đếm thời gian
-        let loadingTimer; 
+        let loadingTimer;
 
         function handleKeyPress(e) {
             if (e.key === 'Enter') {
@@ -178,9 +264,11 @@
 
         async function searchData() {
             const idInput = document.getElementById('studentId').value.trim();
-            const messageBox = document.getElementById('messageBox');
             const resultContainer = document.getElementById('resultContainer');
             const searchBtn = document.getElementById('searchBtn');
+            const mainContainer = document.getElementById('mainContainer');
+
+            mainContainer.classList.remove('expanded');
 
             if (!idInput) {
                 showMessage("Please enter your Student ID.", "error");
@@ -188,16 +276,13 @@
                 return;
             }
 
-            // Reset UI
             resultContainer.style.display = "none";
             resultContainer.innerHTML = '';
             searchBtn.disabled = true;
             searchBtn.innerText = "Searching...";
             
-            // Xóa bộ đếm cũ nếu có
             if (loadingTimer) clearInterval(loadingTimer);
             
-            // Khởi tạo và hiển thị đồng hồ đếm giây
             let seconds = 0;
             showMessage(`Loading data, please wait... ${seconds}s`, "loading");
             
@@ -207,56 +292,137 @@
             }, 1000);
 
             try {
-                // Fetch data from Google Apps Script
                 const response = await fetch(`${WEB_APP_URL}?id=${encodeURIComponent(idInput)}`);
                 const json = await response.json();
 
                 if (json.error) {
                     showMessage(json.error, "error");
                 } else if (json.success) {
-                    showMessage("", ""); // Xóa dòng chữ loading khi thành công
+                    showMessage("", "");
                     displayData(json.data);
                 }
             } catch (error) {
                 showMessage("Connection error. Please try again later.", "error");
             } finally {
-                // Dừng đồng hồ đếm giây dù thành công hay lỗi
                 clearInterval(loadingTimer);
                 searchBtn.disabled = false;
                 searchBtn.innerText = "Search Information";
             }
         }
 
+        function formatDataValue(value) {
+            if (typeof value !== 'string') return value;
+
+            const percentRegex = /(\d+(?:\.\d+)?)\s*%/g;
+            
+            return value.replace(percentRegex, (match, numStr) => {
+                const num = parseFloat(numStr);
+                let bgColor = "";
+
+                if (num >= 90) bgColor = "#0AB275";
+                else if (num >= 80) bgColor = "#19B8B7";
+                else if (num >= 70) bgColor = "#297AB8";
+                else if (num >= 60) bgColor = "#F1C96C";
+                else if (num >= 50) bgColor = "#F7503F";
+                else if (num >= 40) bgColor = "#ED6725";
+                else if (num >= 30) bgColor = "#9A4B26";
+                else if (num >= 20) bgColor = "#6B307B";
+                else if (num >= 0) bgColor = "#2C353F";
+
+                if (bgColor) {
+                    return `<span class="percentage-badge" style="background-color: ${bgColor};">${match}</span>`;
+                }
+                return match;
+            });
+        }
+
         function displayData(data) {
             const resultContainer = document.getElementById('resultContainer');
+            const mainContainer = document.getElementById('mainContainer');
             resultContainer.innerHTML = '';
 
-            // Dynamically create rows for allowed columns
+            mainContainer.classList.add('expanded');
+
+            let extractedName = "N/A";
+            let extractedEmail = "N/A";
+            let otherItems = [];
+
             for (const [key, value] of Object.entries(data)) {
-                // Skip empty values for cleaner UI
                 if (value === "" || value === null) continue;
-
-                const row = document.createElement('div');
-                row.className = 'info-row';
                 
-                const label = document.createElement('div');
-                label.className = 'info-label';
-                label.innerText = key; // Column Header
+                const lowerKey = key.toLowerCase();
                 
-                const val = document.createElement('div');
-                val.className = 'info-value';
-                
-                // Format dates nicely if they are ISO strings
-                if(typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}T/)) {
-                    const date = new Date(value);
-                    val.innerText = date.toLocaleDateString('en-GB');
+                if (lowerKey.includes("name") || lowerKey.includes("họ và tên") || lowerKey.includes("tên")) {
+                    extractedName = value;
+                } else if (lowerKey.includes("email")) {
+                    extractedEmail = value;
                 } else {
-                    val.innerText = value;
+                    let displayValue = value;
+                    if(typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}T/)) {
+                        displayValue = new Date(value).toLocaleDateString('en-GB');
+                    }
+                    otherItems.push({ key, value: displayValue });
                 }
+            }
 
-                row.appendChild(label);
-                row.appendChild(val);
-                resultContainer.appendChild(row);
+            const topInfoDiv = document.createElement('div');
+            topInfoDiv.className = 'top-info';
+            topInfoDiv.innerHTML = `
+                <div class="top-info-row">
+                    <span class="info-label">Full Name</span>
+                    <span class="info-value name-highlight">${extractedName}</span>
+                </div>
+                <div class="top-info-row">
+                    <span class="info-label">Email</span>
+                    <span class="info-value">${extractedEmail}</span>
+                </div>
+            `;
+            resultContainer.appendChild(topInfoDiv);
+
+            if (otherItems.length > 0) {
+                const gridDiv = document.createElement('div');
+                gridDiv.className = 'grid-results';
+                
+                const maxVisible = 10; 
+
+                otherItems.forEach((item, index) => {
+                    const gridItem = document.createElement('div');
+                    gridItem.className = 'grid-item';
+                    
+                    if (index >= maxVisible) {
+                        gridItem.classList.add('hidden-item');
+                        gridItem.style.display = 'none';
+                    }
+                    
+                    gridItem.innerHTML = `
+                        <div class="grid-label">${item.key}</div>
+                        <div class="grid-value">${formatDataValue(item.value.toString())}</div>
+                    `;
+                    gridDiv.appendChild(gridItem);
+                });
+                
+                resultContainer.appendChild(gridDiv);
+
+                if (otherItems.length > maxVisible) {
+                    const seeMoreBtn = document.createElement('button');
+                    seeMoreBtn.className = 'btn-outline';
+                    seeMoreBtn.innerText = 'See More';
+                    
+                    seeMoreBtn.onclick = function() {
+                        const hiddenElements = gridDiv.querySelectorAll('.hidden-item');
+                        const isExpanded = seeMoreBtn.innerText === 'See Less';
+                        
+                        if (!isExpanded) {
+                            hiddenElements.forEach(el => el.style.display = 'flex');
+                            seeMoreBtn.innerText = 'See Less';
+                        } else {
+                            hiddenElements.forEach(el => el.style.display = 'none');
+                            seeMoreBtn.innerText = 'See More';
+                        }
+                    };
+                    
+                    resultContainer.appendChild(seeMoreBtn);
+                }
             }
 
             resultContainer.style.display = "block";
