@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Information Portal</title>
+    <style>
+        :root {
+            --primary: #059669;
+            --primary-hover: #047857;
+            --bg: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --border: #E5E7EB;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 480px; 
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: max-width 0.4s ease-in-out; 
+        }
+
+        .container.expanded {
+            max-width: 800px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+
+        .search-box {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            background-color: var(--primary);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #9CA3AF;
+            cursor: not-allowed;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            margin-top: 20px;
+        }
+
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        #resultContainer {
+            margin-top: 25px;
+            display: none;
+        }
+
+        .top-info {
+            background: #F8FAFC;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .top-info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px dashed #CBD5E1;
+            padding-bottom: 10px;
+        }
+
+        .top-info-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .top-info-row .info-label {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .top-info-row .info-value {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-main);
+            text-align: right;
+            word-wrap: break-word;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .name-highlight {
+            color: var(--primary) !important;
+            font-size: 1.2rem !important;
+        }
+
+        .grid-results {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        @media (min-width: 600px) {
+            .grid-results {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .grid-item {
+            background: #FFFFFF;
+            border: 1px solid var(--border);
+            padding: 16px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            transition: box-shadow 0.2s;
+        }
+
+        .grid-item:hover {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .grid-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        /* Giữ nguyên đúng định dạng xuống dòng chuẩn từ file Sheet gốc */
+        .grid-value {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-main);
+            word-wrap: break-word;
+            word-break: break-word;
+            white-space: pre-wrap; /* Giữ chuẩn ngắt dòng từ Google Sheet */
+            line-height: 1.5;
+        }
+
+        .percentage-badge {
+            display: inline-block;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 6px;
+            margin-top: 2px;
+            font-weight: bold;
+        }
+
+        .message {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .error { color: #DC2626; }
+        .loading { color: var(--primary); font-weight: 500; }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="mainContainer">
+        <div class="header">
+            <h2>Computing Student Portal</h2>
+            <p>Enter your key to view your information</p>
+        </div>
+
+        <div class="search-box">
+            <input type="text" id="studentId" placeholder="e.g. 123456" autocomplete="off" onkeypress="handleKeyPress(event)">
+            <button id="searchBtn" onclick="searchData()">Search Information</button>
+        </div>
+
+        <div id="messageBox" class="message"></div>
+
+        <div id="resultContainer">
+            <!-- Data will be populated here dynamically -->
+        </div>
+    </div>
+
+    <script>
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwHoDhTBtpx568evmrxPJhdocwnJY9cIhSTtQLBRt8vrwHR30v5fU_1yvu_0SAMqs_6gw/exec";
+        
+        let loadingTimer;
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') {
+                searchData();
+            }
+        }
+
+        async function searchData() {
+            const idInput = document.getElementById('studentId').value.trim();
+            const resultContainer = document.getElementById('resultContainer');
+            const searchBtn = document.getElementById('searchBtn');
+            const mainContainer = document.getElementById('mainContainer');
+
+            mainContainer.classList.remove('expanded');
+
+            if (!idInput) {
+                showMessage("Please enter your Student ID.", "error");
+                resultContainer.style.display = "none";
+                return;
+            }
+
+            resultContainer.style.display = "none";
+            resultContainer.innerHTML = '';
+            searchBtn.disabled = true;
+            searchBtn.innerText = "Searching...";
+            
+            if (loadingTimer) clearInterval(loadingTimer);
+            
+            let seconds = 0;
+            showMessage(`Loading data, please wait... ${seconds}s`, "loading");
+            
+            loadingTimer = setInterval(() => {
+                seconds++;
+                showMessage(`Loading data, please wait... ${seconds}s`, "loading");
+            }, 1000);
+
+            try {
+                const response = await fetch(`${WEB_APP_URL}?id=${encodeURIComponent(idInput)}`);
+                const json = await response.json();
+
+                if (json.error) {
+                    showMessage(json.error, "error");
+                } else if (json.success) {
+                    showMessage("", "");
+                    displayData(json.data);
+                }
+            } catch (error) {
+                showMessage("Connection error. Please try again later.", "error");
+            } finally {
+                clearInterval(loadingTimer);
+                searchBtn.disabled = false;
+                searchBtn.innerText = "Search Information";
+            }
+        }
+
+        function formatDataValue(value) {
+            if (typeof value !== 'string') return value;
+
+            const percentRegex = /(\d+(?:\.\d+)?)\s*%/g;
+            
+            return value.replace(percentRegex, (match, numStr) => {
+                const num = parseFloat(numStr);
+                let bgColor = "";
+
+                if (num >= 90) bgColor = "#0AB275";
+                else if (num >= 80) bgColor = "#19B8B7";
+                else if (num >= 70) bgColor = "#297AB8";
+                else if (num >= 60) bgColor = "#F1C96C";
+                else if (num >= 50) bgColor = "#F7503F";
+                else if (num >= 40) bgColor = "#ED6725";
+                else if (num >= 30) bgColor = "#9A4B26";
+                else if (num >= 20) bgColor = "#6B307B";
+                else if (num >= 0) bgColor = "#2C353F";
+
+                if (bgColor) {
+                    return `<span class="percentage-badge" style="background-color: ${bgColor};">${match}</span>`;
+                }
+                return match;
+            });
+        }
+
+        function displayData(data) {
+            const resultContainer = document.getElementById('resultContainer');
+            const mainContainer = document.getElementById('mainContainer');
+            resultContainer.innerHTML = '';
+
+            mainContainer.classList.add('expanded');
+
+            let extractedName = "N/A";
+            let extractedEmail = "N/A";
+            let otherItems = [];
+
+            for (const [key, value] of Object.entries(data)) {
+                if (value === "" || value === null) continue;
+                
+                const lowerKey = key.toLowerCase();
+                
+                if (lowerKey.includes("name") || lowerKey.includes("họ và tên") || lowerKey.includes("tên")) {
+                    extractedName = value;
+                } else if (lowerKey.includes("email")) {
+                    extractedEmail = value;
+                } else {
+                    let displayValue = value;
+                    if(typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}T/)) {
+                        displayValue = new Date(value).toLocaleDateString('en-GB');
+                    }
+                    otherItems.push({ key, value: displayValue });
+                }
+            }
+
+            const topInfoDiv = document.createElement('div');
+            topInfoDiv.className = 'top-info';
+            topInfoDiv.innerHTML = `
+                <div class="top-info-row">
+                    <span class="info-label">Full Name</span>
+                    <span class="info-value name-highlight">${extractedName}</span>
+                </div>
+                <div class="top-info-row">
+                    <span class="info-label">Email</span>
+                    <span class="info-value">${extractedEmail}</span>
+                </div>
+            `;
+            resultContainer.appendChild(topInfoDiv);
+
+            if (otherItems.length > 0) {
+                const gridDiv = document.createElement('div');
+                gridDiv.className = 'grid-results';
+                
+                const maxVisible = 10; 
+
+                otherItems.forEach((item, index) => {
+                    const gridItem = document.createElement('div');
+                    gridItem.className = 'grid-item';
+                    
+                    if (index >= maxVisible) {
+                        gridItem.classList.add('hidden-item');
+                        gridItem.style.display = 'none';
+                    }
+                    
+                    gridItem.innerHTML = `
+                        <div class="grid-label">${item.key}</div>
+                        <div class="grid-value">${formatDataValue(item.value.toString())}</div>
+                    `;
+                    gridDiv.appendChild(gridItem);
+                });
+                
+                resultContainer.appendChild(gridDiv);
+
+                if (otherItems.length > maxVisible) {
+                    const seeMoreBtn = document.createElement('button');
+                    seeMoreBtn.className = 'btn-outline';
+                    seeMoreBtn.innerText = 'See More';
+                    
+                    seeMoreBtn.onclick = function() {
+                        const hiddenElements = gridDiv.querySelectorAll('.hidden-item');
+                        const isExpanded = seeMoreBtn.innerText === 'See Less';
+                        
+                        if (!isExpanded) {
+                            hiddenElements.forEach(el => el.style.display = 'flex');
+                            seeMoreBtn.innerText = 'See Less';
+                        } else {
+                            hiddenElements.forEach(el => el.style.display = 'none');
+                            seeMoreBtn.innerText = 'See More';
+                        }
+                    };
+                    
+                    resultContainer.appendChild(seeMoreBtn);
+                }
+            }
+
+            resultContainer.style.display = "block";
+        }
+
+        function showMessage(text, type) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.innerText = text;
+            messageBox.className = "message " + type;
+        }
+    </script>
+</body>
+</html>
