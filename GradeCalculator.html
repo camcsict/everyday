@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en" style="font-size: 16px; transition: font-size 0.3s ease;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Grade Calculator</title>
+    
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Smooth scaling when font-size changes */
+            transition: all 0.3s ease;
+        }
+        
+        /* Custom scrollbar for an elegant feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* slate-300 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* slate-400 */
+        }
+        
+        /* Smooth, subtle animations */
+        .fade-in {
+            animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Modal animations */
+        .modal-enter {
+            animation: modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes modalEnter {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Remove arrows from number inputs for a cleaner look */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        /* Utility focus ring */
+        .focus-ring {
+            transition: all 0.2s ease;
+        }
+        .focus-ring:focus-within {
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+            border-color: #38bdf8;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 p-4 sm:p-8 flex items-start justify-center relative">
+
+    <main class="w-full max-w-4xl mt-2 sm:mt-6 flex flex-col gap-4 relative z-10">
+        
+        <!-- Accessibility Controls -->
+        <div class="flex justify-end items-center gap-2 px-2 fade-in">
+            <span class="text-xs font-medium text-slate-400 uppercase tracking-wider mr-2">Text Size</span>
+            <button class="font-size-btn bg-white border border-slate-200 text-slate-600 hover:text-sky-600 hover:border-sky-300 hover:bg-sky-50 rounded-lg w-8 h-8 flex items-center justify-center text-sm font-medium transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-200" data-size="16px" title="Normal Size">A</button>
+            <button class="font-size-btn bg-white border border-slate-200 text-slate-600 hover:text-sky-600 hover:border-sky-300 hover:bg-sky-50 rounded-lg w-10 h-10 flex items-center justify-center text-base font-semibold transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-200" data-size="18px" title="Large Size">A+</button>
+            <button class="font-size-btn bg-white border border-slate-200 text-slate-600 hover:text-sky-600 hover:border-sky-300 hover:bg-sky-50 rounded-lg w-12 h-12 flex items-center justify-center text-lg font-bold transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-200" data-size="20px" title="Extra Large Size">A++</button>
+        </div>
+
+        <!-- Main Calculator Card -->
+        <div class="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-100 overflow-hidden">
+            
+            <!-- Header -->
+            <header class="pt-10 pb-8 px-8 text-center border-b border-slate-100 relative overflow-hidden">
+                <!-- Decorative background elements -->
+                <div class="absolute -top-24 -left-24 w-48 h-48 bg-sky-50 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+                <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-indigo-50 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+                
+                <h1 class="text-3xl sm:text-4xl font-bold text-slate-800 tracking-tight mb-3 relative z-10">Grade Calculator</h1>
+                <p class="text-slate-500 text-sm sm:text-base font-medium relative z-10">100-Point Scale • 40% Formative • 60% Summative</p>
+            </header>
+
+            <div class="p-6 sm:p-10 space-y-12">
+                
+                <!-- PART 1: FORMATIVE ASSESSMENT -->
+                <section>
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="bg-sky-100 text-sky-700 w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold border border-sky-200 shadow-sm">1</div>
+                        <h2 class="text-xl font-semibold text-slate-800">Formative Assessment</h2>
+                        <span class="ml-auto text-xs font-bold text-sky-600 bg-sky-50 px-3 py-1.5 rounded-lg border border-sky-100">Weight: 40%</span>
+                    </div>
+                    
+                    <div class="mb-6 bg-slate-50 p-5 rounded-xl border border-slate-100">
+                        <label for="formative-col-count" class="block text-sm font-semibold text-slate-700 mb-3">Number of grade columns</label>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input type="number" id="formative-col-count" min="1" max="50" placeholder="e.g., 4" 
+                                class="focus-ring block w-full sm:max-w-[220px] rounded-lg border-slate-300 border px-4 py-3 outline-none transition-all text-slate-700 bg-white placeholder-slate-400 font-medium">
+                            <button id="btn-gen-formative" class="bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-white px-6 py-3 rounded-lg text-sm font-semibold transition-all shadow-md focus:ring-4 focus:ring-slate-200 outline-none flex-shrink-0">
+                                Generate Fields
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Container for Formative input fields -->
+                    <div id="formative-inputs-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-4">
+                        <!-- Inputs injected here dynamically -->
+                    </div>
+
+                    <!-- Formative Result Box -->
+                    <div id="formative-result-container" class="hidden mt-8 bg-gradient-to-br from-sky-50 to-white rounded-xl border border-sky-100 p-6 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide">Formative Average</p>
+                            <p class="text-3xl text-sky-600 font-bold tracking-tight" id="formative-score">0.0</p>
+                        </div>
+                        <div class="border-t border-sky-100 pt-4">
+                            <p class="text-xs text-slate-500 font-semibold mb-2 uppercase tracking-wider">Step-by-step Calculation</p>
+                            <div class="overflow-x-auto">
+                                <p id="formative-explanation" class="font-mono text-sm text-slate-700 bg-white p-3 rounded-lg border border-slate-200 shadow-inner whitespace-nowrap"></p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PART 2: SUMMATIVE ASSESSMENT -->
+                <section class="border-t-2 border-slate-100 pt-12">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="bg-indigo-100 text-indigo-700 w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold border border-indigo-200 shadow-sm">2</div>
+                        <h2 class="text-xl font-semibold text-slate-800">Summative Assessment</h2>
+                        <span class="ml-auto text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">Weight: 60%</span>
+                    </div>
+                    
+                    <div class="mb-6 bg-slate-50 p-5 rounded-xl border border-slate-100">
+                        <label for="summative-col-count" class="block text-sm font-semibold text-slate-700 mb-3">Number of grade columns</label>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input type="number" id="summative-col-count" min="1" max="50" placeholder="e.g., 2" 
+                                class="focus-ring block w-full sm:max-w-[220px] rounded-lg border-slate-300 border px-4 py-3 outline-none transition-all text-slate-700 bg-white placeholder-slate-400 font-medium">
+                            <button id="btn-gen-summative" class="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white px-6 py-3 rounded-lg text-sm font-semibold transition-all shadow-md focus:ring-4 focus:ring-indigo-100 outline-none flex-shrink-0">
+                                Generate Fields
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Container for Summative input fields -->
+                    <div id="summative-inputs-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-4">
+                        <!-- Inputs injected here dynamically -->
+                    </div>
+
+                    <!-- Summative Result Box -->
+                    <div id="summative-result-container" class="hidden mt-8 bg-gradient-to-br from-indigo-50 to-white rounded-xl border border-indigo-100 p-6 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <p class="text-sm font-semibold text-slate-600 uppercase tracking-wide">Summative Average</p>
+                            <p class="text-3xl text-indigo-600 font-bold tracking-tight" id="summative-score">0.0</p>
+                        </div>
+                        <div class="border-t border-indigo-100 pt-4">
+                            <p class="text-xs text-slate-500 font-semibold mb-2 uppercase tracking-wider">Step-by-step Calculation</p>
+                            <div class="overflow-x-auto">
+                                <p id="summative-explanation" class="font-mono text-sm text-slate-700 bg-white p-3 rounded-lg border border-slate-200 shadow-inner whitespace-nowrap"></p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PART 3: FINAL GRADE CALCULATION TRIGGER -->
+                <section class="border-t-2 border-slate-100 pt-10">
+                    <button id="btn-calculate-final" class="w-full bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 active:scale-[0.99] text-white px-8 py-5 rounded-xl text-lg font-bold transition-all shadow-lg hover:shadow-xl focus:ring-4 focus:ring-sky-200 outline-none flex justify-center items-center gap-3">
+                        Calculate Final Grade
+                        <svg class="w-6 h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </section>
+
+                <!-- Final Result Box -->
+                <section id="final-result-container" class="hidden bg-slate-800 border-4 border-slate-900 rounded-3xl p-8 sm:p-12 shadow-2xl text-center relative overflow-hidden">
+                    <!-- Decorative glowing orbs -->
+                    <div class="absolute -top-10 -right-10 w-32 h-32 bg-sky-500 rounded-full blur-[60px] opacity-40"></div>
+                    <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-500 rounded-full blur-[60px] opacity-40"></div>
+
+                    <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 relative z-10">Overall Course Grade</h3>
+                    
+                    <div class="text-7xl sm:text-8xl font-black text-white mb-10 tracking-tighter drop-shadow-md relative z-10" id="final-score">
+                        0.0
+                    </div>
+                    
+                    <div class="bg-slate-900/50 backdrop-blur-sm rounded-2xl p-6 sm:p-8 text-left border border-slate-700 relative z-10">
+                        <h4 class="font-semibold text-slate-300 mb-5 text-base flex items-center gap-2 uppercase tracking-wide">
+                            <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Final Breakdown
+                        </h4>
+                        
+                        <div class="space-y-5 font-mono text-sm sm:text-base text-slate-300">
+                            <p class="text-white font-semibold pb-3 border-b border-slate-700">
+                                Final = (Formative Avg × 0.4) + (Summative Avg × 0.6)
+                            </p>
+                            <div class="pl-4 border-l-2 border-sky-500 space-y-3 py-2">
+                                <p class="flex flex-wrap gap-2">
+                                    <span class="text-slate-400 w-40">Formative (40%):</span> 
+                                    <span id="final-exp-formative" class="font-semibold text-white"></span>
+                                </p>
+                                <p class="flex flex-wrap gap-2">
+                                    <span class="text-slate-400 w-40">Summative (60%):</span> 
+                                    <span id="final-exp-summative" class="font-semibold text-white"></span>
+                                </p>
+                            </div>
+                            <div class="pt-4 mt-4 text-white bg-slate-800/80 p-4 rounded-xl border border-slate-700 flex flex-wrap gap-2 items-center text-lg">
+                                <span class="text-slate-400 font-sans text-base">Result:</span> 
+                                <span id="final-exp-total" class="font-medium"></span> 
+                                <span class="text-slate-500">=</span>
+                                <span id="final-exp-result" class="font-bold text-2xl text-sky-400 ml-1"></span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Custom Alert / Message Box -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 transition-opacity opacity-0">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full p-6 sm:p-8 transform scale-95 transition-transform" id="custom-modal-content">
+            <div class="flex items-center gap-4 mb-4 text-rose-600">
+                <div class="bg-rose-100 p-3 rounded-full">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800">Action Required</h3>
+            </div>
+            <p id="custom-modal-message" class="text-slate-600 mb-8 font-medium leading-relaxed"></p>
+            <div class="flex justify-end">
+                <button id="btn-close-modal" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2.5 rounded-lg font-semibold transition-colors focus:ring-4 focus:ring-slate-200 outline-none w-full sm:w-auto">
+                    Understood
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* === ACCESSIBILITY LOGIC === */
+        const fontBtns = document.querySelectorAll('.font-size-btn');
+        fontBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove active styling from all
+                fontBtns.forEach(b => {
+                    b.classList.remove('ring-2', 'ring-sky-400', 'border-sky-400');
+                });
+                // Add active styling to clicked
+                btn.classList.add('ring-2', 'ring-sky-400', 'border-sky-400');
+                
+                // Change root font-size
+                const size = btn.getAttribute('data-size');
+                document.documentElement.style.fontSize = size;
+            });
+        });
+
+        /* === MODAL LOGIC (Replacement for Alert) === */
+        const modal = document.getElementById('custom-modal');
+        const modalContent = document.getElementById('custom-modal-content');
+        const modalMessage = document.getElementById('custom-modal-message');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        let currentFocusAfterModal = null;
+
+        function showMessage(msg, elementToFocus = null) {
+            currentFocusAfterModal = elementToFocus;
+            modalMessage.textContent = msg;
+            
+            modal.classList.remove('hidden');
+            // Small delay to allow display:block to apply before animating opacity
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.add('modal-enter');
+            }, 10);
+            
+            btnCloseModal.focus();
+        }
+
+        function hideMessage() {
+            modal.classList.add('opacity-0');
+            modalContent.classList.remove('modal-enter');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                if (currentFocusAfterModal) {
+                    currentFocusAfterModal.focus();
+                }
+            }, 300); // Matches transition duration
+        }
+
+        btnCloseModal.addEventListener('click', hideMessage);
+        
+        // Allow hiding with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                hideMessage();
+            }
+        });
+
+        /* === UTILITY FUNCTIONS === */
+        // Clamp score strictly between 0.0 and 100.0, and limit to 1 decimal point on input blur if desired,
+        // but we enforce strict 0-100 logic during input.
+        function clampScore(inputElement) {
+            let val = parseFloat(inputElement.value);
+            if (val > 100) inputElement.value = 100;
+            if (val < 0) inputElement.value = 0;
+        }
+
+        // Format a number strictly to 1 decimal place
+        function formatNumber(num) {
+            return (Math.round(num * 10) / 10).toFixed(1);
+        }
+
+        /* === STATE === */
+        let state = {
+            formative: { avg: 0.0, isGenerated: false },
+            summative: { avg: 0.0, isGenerated: false }
+        };
+
+        const finalResultContainer = document.getElementById('final-result-container');
+
+        /* === CORE GENERATION & CALCULATION LOGIC === */
+        
+        // Generic function to handle input generation for both sections
+        function handleGenerateInputs(sectionType) {
+            const countInput = document.getElementById(`${sectionType}-col-count`);
+            const count = parseInt(countInput.value);
+            
+            if (isNaN(count) || count < 1 || count > 50) {
+                showMessage("Please enter a valid number of columns (between 1 and 50).", countInput);
+                return;
+            }
+
+            const container = document.getElementById(`${sectionType}-inputs-container`);
+            container.innerHTML = ''; // Clear existing
+            
+            for (let i = 1; i <= count; i++) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex flex-col opacity-0 fade-in';
+                wrapper.style.animationDelay = `${(i * 0.04)}s`;
+                
+                const label = document.createElement('label');
+                label.textContent = `Column ${i}`;
+                label.className = 'text-xs font-semibold text-slate-500 mb-1.5 ml-1';
+                
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.min = '0';
+                input.max = '100';
+                input.step = '0.1';
+                input.placeholder = '0.0';
+                // Distinct border colors on focus for formative (sky) vs summative (indigo)
+                const focusColor = sectionType === 'formative' ? 'focus:border-sky-400 focus:ring-sky-100' : 'focus:border-indigo-400 focus:ring-indigo-100';
+                input.className = `${sectionType}-grade-input rounded-xl border-slate-200 border-2 px-4 py-2.5 text-base outline-none transition-all font-semibold text-slate-800 bg-white focus:ring-4 ${focusColor} shadow-sm`;
+                
+                // Real-time calculation and clamping
+                input.addEventListener('input', function() {
+                    clampScore(this);
+                    calculateSectionAverage(sectionType);
+                    finalResultContainer.classList.add('hidden'); 
+                });
+
+                wrapper.appendChild(label);
+                wrapper.appendChild(input);
+                container.appendChild(wrapper);
+            }
+
+            // Reveal result box, calculate initial (zeros), hide final
+            document.getElementById(`${sectionType}-result-container`).classList.remove('hidden');
+            state[sectionType].isGenerated = true;
+            calculateSectionAverage(sectionType);
+            finalResultContainer.classList.add('hidden');
+        }
+
+        // Generic function to calculate average for a section
+        function calculateSectionAverage(sectionType) {
+            const inputs = document.querySelectorAll(`.${sectionType}-grade-input`);
+            if (inputs.length === 0) return;
+
+            let fullSum = 0;
+            let formulaStr = "(";
+            const count = inputs.length;
+            
+            for (let i = 0; i < count; i++) {
+                let val = parseFloat(inputs[i].value) || 0;
+                fullSum += val;
+                formulaStr += formatNumber(val);
+                if (i < count - 1) formulaStr += " + ";
+            }
+            
+            const rawAverage = fullSum / count;
+            const formattedAverage = formatNumber(rawAverage);
+            
+            // Save to state
+            state[sectionType].avg = parseFloat(formattedAverage);
+            
+            formulaStr += `) ÷ ${count} = ${formatNumber(fullSum)} ÷ ${count} = ${formattedAverage}`;
+
+            // Update DOM
+            document.getElementById(`${sectionType}-score`).textContent = formattedAverage;
+            document.getElementById(`${sectionType}-explanation`).textContent = formulaStr;
+        }
+
+        /* === EVENT LISTENERS === */
+
+        // Formative Generation
+        document.getElementById('btn-gen-formative').addEventListener('click', () => {
+            handleGenerateInputs('formative');
+        });
+
+        // Summative Generation
+        document.getElementById('btn-gen-summative').addEventListener('click', () => {
+            handleGenerateInputs('summative');
+        });
+
+        // Final Grade Calculation
+        document.getElementById('btn-calculate-final').addEventListener('click', () => {
+            
+            if (!state.formative.isGenerated) {
+                showMessage("Please generate and fill in the Formative Assessment scores first.", document.getElementById('formative-col-count'));
+                return;
+            }
+
+            if (!state.summative.isGenerated) {
+                showMessage("Please generate and fill in the Summative Assessment scores first.", document.getElementById('summative-col-count'));
+                return;
+            }
+
+            // Ensure sections are up to date
+            calculateSectionAverage('formative');
+            calculateSectionAverage('summative');
+
+            // Weights
+            const formativeWeight = 0.4;
+            const summativeWeight = 0.6;
+
+            // Formatted Averages
+            const formAvgFormatted = formatNumber(state.formative.avg);
+            const sumAvgFormatted = formatNumber(state.summative.avg);
+
+            // Parts calculated and formatted
+            const formPartRaw = state.formative.avg * formativeWeight;
+            const sumPartRaw = state.summative.avg * summativeWeight;
+            
+            const formPartFormatted = formatNumber(formPartRaw);
+            const sumPartFormatted = formatNumber(sumPartRaw);
+            
+            // Final Grade (strict 1 decimal)
+            const finalGrade = formatNumber(formPartRaw + sumPartRaw);
+
+            // Update UI Elements
+            document.getElementById('final-score').textContent = finalGrade;
+            document.getElementById('final-exp-formative').textContent = `${formAvgFormatted} × 0.4 = ${formPartFormatted}`;
+            document.getElementById('final-exp-summative').textContent = `${sumAvgFormatted} × 0.6 = ${sumPartFormatted}`;
+            document.getElementById('final-exp-total').textContent = `${formPartFormatted} + ${sumPartFormatted}`;
+            document.getElementById('final-exp-result').textContent = finalGrade;
+
+            // Display results with animation
+            finalResultContainer.classList.remove('hidden');
+            
+            setTimeout(() => {
+                finalResultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        });
+
+        // Initial Setup: Set active class on default font size button
+        document.querySelector('[data-size="16px"]').classList.add('ring-2', 'ring-sky-400', 'border-sky-400');
+    </script>
+</body>
+</html>
