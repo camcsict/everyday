@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Live News Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #f8fafc;
+            color: #0f172a;
+            transition: background-color 1s ease;
+        }
+        
+        .marquee-container { display: flex; overflow: hidden; white-space: nowrap; width: 100%; align-items: center; }
+        .marquee-content { display: inline-block; padding-left: 100%; animation: marquee 25s linear infinite; }
+        @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+
+        .card-modern {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+        .card-modern:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .nav-glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        
+        .dropdown-enter { animation: dropIn 0.2s cubic-bezier(0, 0, 0.2, 1) forwards; transform-origin: top; }
+        @keyframes dropIn { from { opacity: 0; transform: scaleY(0.95); } to { opacity: 1; transform: scaleY(1); } }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* HIỆU ỨNG THỜI TIẾT MỚI */
+        @keyframes rainFall {
+            0% { transform: translateY(-10vh); opacity: 0.8; }
+            100% { transform: translateY(110vh); opacity: 0; }
+        }
+        @keyframes cloudMove {
+            0% { transform: translateX(-20vw); opacity: 0; }
+            10% { opacity: 0.8; }
+            90% { opacity: 0.8; }
+            100% { transform: translateX(120vw); opacity: 0; }
+        }
+        .lightning-flash {
+            position: fixed; inset: 0; background: white; z-index: 9999;
+            pointer-events: none; opacity: 0;
+            animation: flashAnim 0.5s ease-out forwards;
+        }
+        @keyframes flashAnim {
+            0% { opacity: 0.9; }
+            30% { opacity: 0; }
+            50% { opacity: 0.6; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- CONTAINER CHỨA HIỆU ỨNG THỜI TIẾT -->
+    <div id="weatherEffectsContainer" class="fixed inset-0 pointer-events-none z-[30] overflow-hidden"></div>
+
+    <!-- ============================================== -->
+    <!-- THANH SLIDER: ĐIỀU CHỈNH LƯỢNG MƯA (Ẩn mặc định) -->
+    <!-- ============================================== -->
+    <div id="rainSliderWrapper" class="hidden fixed left-3 sm:left-6 top-1/2 -translate-y-1/2 z-[45] flex flex-col items-center bg-white/80 backdrop-blur-md p-3 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100 hover:bg-white transition-colors duration-300 group">
+        <i class="fas fa-cloud-showers-heavy text-slate-500 mb-5 text-lg drop-shadow-sm transition-transform group-hover:scale-110" title="Heavy Rain"></i>
+        <div class="relative h-40 w-6">
+            <input type="range" id="rainIntensitySlider" min="1" max="10" value="3" oninput="updateRainIntensity()" 
+                   class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-2 bg-slate-200 rounded-full appearance-none cursor-pointer -rotate-90 accent-slate-600 hover:accent-slate-700 transition-all focus:outline-none" title="Adjust rain intensity">
+        </div>
+        <i class="fas fa-tint text-slate-500 mt-5 text-lg drop-shadow-sm transition-transform group-hover:scale-110" title="Light Rain"></i>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- POPUP: HELLO OCTOBER (Chọn thời tiết) -->
+    <!-- ============================================== -->
+    <div id="popupWeather" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[210] flex items-center justify-center p-4">
+        <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl text-center transform transition-all border-b-4 border-blue-500 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-blue-500 to-blue-300 -z-10" id="popupHeader"></div>
+            
+            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSVKAxmKrGzqxqfdcc79K0NuoCvnLC5erOvfQf5S8HG_g&s=10" alt="Thumbnail" class="w-28 h-28 object-cover rounded-full mx-auto mt-4 mb-4 shadow-lg border-4 border-white">
+            
+            <h3 class="text-3xl font-black text-slate-900 mb-2">Hello October ✨</h3>
+            <p class="text-base font-bold text-slate-500 mb-6">What weather is today?</p>
+            
+            <div class="flex justify-center items-center gap-6 mb-2">
+                <button onclick="setWeather('rain')" class="text-4xl hover:scale-125 hover:-translate-y-2 transition-transform duration-300 drop-shadow-md">🌧️</button>
+                <button onclick="setWeather('sunny')" class="text-4xl hover:scale-125 hover:-translate-y-2 transition-transform duration-300 drop-shadow-md">☀️</button>
+                <button onclick="setWeather('cloudy')" class="text-4xl hover:scale-125 hover:-translate-y-2 transition-transform duration-300 drop-shadow-md">🌤️</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GLOBAL LOADING OVERLAY -->
+    <div id="globalLoader" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex flex-col items-center justify-center hidden">
+        <div class="bg-white px-8 py-6 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-[90%] text-center">
+            <div class="relative w-16 h-16 mb-4">
+                <div class="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+                <div class="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" id="spinnerUI"></div>
+            </div>
+            <h3 id="loaderText" class="text-lg font-bold text-slate-800 mb-1">Processing...</h3>
+            <div class="text-blue-600 font-extrabold text-2xl flex items-center justify-center" id="timerUI">
+                <i class="far fa-clock mr-2 text-xl"></i>
+                <span id="loaderTimer">0</span><span class="text-lg ml-1">s</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticker Bar -->
+    <div class="bg-blue-600 text-white text-sm py-2 px-3 sm:px-4 shadow-sm flex items-center z-50 relative theme-transition">
+        <span class="bg-blue-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide mr-3 flex items-center shrink-0 theme-transition-dark">
+            <i class="fas fa-bolt mr-1.5 text-white"></i> UPDATE
+        </span>
+        <div class="marquee-container w-full font-medium text-blue-50 text-sm sm:text-base">
+            <span class="marquee-content" id="tickerText">Initializing system...</span>
+        </div>
+    </div>
+
+    <!-- Header / Navigation -->
+    <nav class="nav-glass sticky top-0 z-40 border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center">
+                <!-- Logo -->
+                <div class="flex items-center cursor-pointer group" onclick="selectClassOption('General', '🌐 School Wide')">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition theme-transition">
+                        <i class="fas fa-layer-group text-xl sm:text-2xl"></i>
+                    </div>
+                    <div class="ml-3 sm:ml-4">
+                        <span class="font-extrabold text-xl sm:text-2xl tracking-tight text-slate-900">NIRATech<span class="text-blue-600 theme-transition-text">News</span></span>
+                        <p class="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest hidden sm:block">ICT Information Portal</p>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="flex space-x-2 sm:space-x-4 items-center">
+                    <div class="relative" id="customDropdown">
+                        <button onclick="toggleDropdown(event)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm sm:text-base rounded-xl py-2.5 px-4 font-bold transition flex items-center justify-center gap-2 w-max min-w-[140px]">
+                            <span id="dropdownSelected" class="pointer-events-none whitespace-nowrap">🌐 School Wide</span>
+                            <i class="fas fa-chevron-down text-xs pointer-events-none text-slate-400 shrink-0"></i>
+                        </button>
+                        <div id="dropdownMenu" class="hidden absolute right-0 mt-2 w-[220px] bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50 dropdown-enter py-1">
+                            <!-- JS render -->
+                        </div>
+                    </div>
+                    <button onclick="showView('submit')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2.5 rounded-xl font-bold shadow-md shadow-blue-600/20 transition duration-300 flex items-center text-sm sm:text-base whitespace-nowrap theme-transition shadow-theme">
+                        #ShareYourStory
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        
+        <!-- MAIN NEWS VIEW -->
+        <div id="newsView" class="hidden">
+            <!-- HOT NEWS -->
+            <section id="hotNewsSection" class="mb-14 hidden">
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-xl">
+                        <i class="fas fa-fire-alt"></i>
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">Trending Now</h2>
+                </div>
+                <div id="hotNewsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8"></div>
+            </section>
+
+            <!-- REGULAR FEED -->
+            <section>
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 space-y-3 sm:space-y-0">
+                    <h2 id="sectionTitle" class="text-2xl sm:text-3xl font-extrabold text-slate-900 flex items-center">
+                        <i class="fas fa-stream mr-3 text-slate-400"></i> Recent Feed
+                    </h2>
+                    
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="bg-slate-200/60 p-1 rounded-xl flex items-center shadow-inner">
+                            <button onclick="setViewMode('grid')" id="btnGrid" class="px-3.5 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm font-medium transition theme-transition-text">
+                                <i class="fas fa-th-large"></i>
+                            </button>
+                            <button onclick="setViewMode('list')" id="btnList" class="px-3.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 font-medium transition">
+                                <i class="fas fa-list"></i>
+                            </button>
+                        </div>
+                        <span id="currentScopeBadge" class="bg-blue-100 text-blue-700 text-sm font-bold px-4 py-1.5 rounded-full theme-badge">School Wide</span>
+                        <button id="logoutClassBtn" onclick="logoutClass()" class="hidden bg-rose-100 text-rose-600 hover:bg-rose-200 text-sm font-bold px-4 py-1.5 rounded-full transition flex items-center">
+                            <i class="fas fa-sign-out-alt mr-1.5"></i> Log out
+                        </button>
+                    </div>
+                </div>
+                <div id="newsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8"></div>
+                <div id="noNewsMsg" class="hidden flex flex-col items-center justify-center py-20 text-slate-400 bg-white rounded-3xl border border-slate-100 shadow-sm mt-4">
+                    <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-inbox text-3xl"></i>
+                    </div>
+                    <p class="font-bold text-lg">No stories published yet.</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- SUBMIT FORM VIEW -->
+        <div id="submitView" class="hidden max-w-2xl mx-auto">
+            <div class="bg-white p-6 sm:p-10 rounded-3xl shadow-sm border border-slate-100 card-modern">
+                <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-inner theme-badge">
+                    ✨
+                </div>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">Share Your Story</h2>
+                <form id="newsForm" onsubmit="handlePreview(event)">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Student Name</label>
+                            <input type="text" id="studentName" required class="w-full px-5 py-3.5 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition font-medium theme-ring">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Your Class</label>
+                            <select id="studentClass" required class="w-full px-5 py-3.5 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition font-medium theme-ring">
+                                <option value="General">General / School Wide</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-8">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Story Details</label>
+                        <textarea id="newsContent" required rows="5" class="w-full px-5 py-4 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition font-medium theme-ring"></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-600/30 transition text-lg flex items-center justify-center theme-transition shadow-theme">
+                        <span class="mr-2">✨</span> Preview Story
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Các Modal Phụ Trợ (Mật khẩu & Review giữ nguyên CSS layout) -->
+    <div id="passwordModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <!-- Rút gọn để tiết kiệm không gian file -->
+        <div class="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center border-t-4 border-blue-500 theme-border-t">
+            <h3 class="text-2xl font-extrabold text-slate-900 mb-2">Exclusive Space</h3>
+            <p class="text-sm font-medium text-slate-500 mb-8">Unlock <span id="targetClassName" class="font-bold text-blue-600 theme-transition-text"></span>.</p>
+            <input type="password" id="classPassInput" class="w-full px-5 py-4 rounded-xl bg-slate-50 border border-slate-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 mb-4 theme-ring text-center tracking-widest font-bold">
+            <div class="flex space-x-4">
+                <button onclick="document.getElementById('passwordModal').classList.add('hidden')" class="flex-1 py-3.5 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Cancel</button>
+                <button onclick="submitPassword()" class="flex-1 py-3.5 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 transition theme-transition">Launch</button>
+            </div>
+        </div>
+    </div>
+    <div id="previewModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-md z-50 flex items-center justify-center sm:p-4">
+        <!-- Rút gọn để tiết kiệm không gian file -->
+        <div id="previewBox" class="bg-white sm:rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl flex flex-col">
+            <h3 class="text-2xl font-extrabold text-slate-900 flex items-center mb-5"><span class="mr-2">✨</span> Review Submission</h3>
+            <div class="bg-slate-50 p-5 rounded-2xl mb-6 border border-slate-200">
+                <p id="prevName" class="font-bold"></p>
+                <p id="prevContent" class="mt-2 text-slate-700"></p>
+            </div>
+            <div class="flex space-x-4 mt-auto">
+                <button onclick="document.getElementById('previewModal').classList.add('hidden')" class="flex-1 py-3.5 rounded-xl font-bold bg-slate-100 text-slate-600 transition">Edit</button>
+                <button onclick="submitData()" class="flex-1 py-3.5 rounded-xl font-bold bg-blue-600 text-white transition theme-transition">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT HỆ THỐNG -->
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwBP32ja5dJBat0jID9wViIy7PMdNd8iyXk8-sw3NHr96fIt2VmHPwauSM3nKsVT9_-4w/exec'; // Nhập Google App Script URL của bạn vào đây
+        let currentTheme = 'blue';
+        let lightningInterval = null;
+
+        // Tự động gỡ loader ban đầu nếu không có API URL (dành cho mục đích xem giao diện)
+        setTimeout(() => hideLoading(), 1000);
+
+        // ==========================================
+        // WEATHER ENGINE LOGIC
+        // ==========================================
+        function setWeather(type) {
+            document.getElementById('popupWeather').classList.add('hidden');
+            const weatherContainer = document.getElementById('weatherEffectsContainer');
+            const rainSlider = document.getElementById('rainSliderWrapper');
+            weatherContainer.innerHTML = ''; // Clear cữ
+            clearInterval(lightningInterval);
+
+            let newThemeColor = 'blue';
+
+            if (type === 'rain') {
+                newThemeColor = 'slate';
+                document.body.style.backgroundColor = '#94a3b8'; // Xám trời
+                rainSlider.classList.remove('hidden');
+                updateRainIntensity(); // Bắt đầu mưa
+                lightningInterval = setInterval(createLightning, 10000); // Sấm chớp 10s/lần
+            } 
+            else if (type === 'sunny') {
+                newThemeColor = 'yellow';
+                document.body.style.backgroundColor = '#fef08a'; // Vàng rực rỡ
+                rainSlider.classList.add('hidden');
+            } 
+            else if (type === 'cloudy') {
+                newThemeColor = 'sky';
+                document.body.style.backgroundColor = '#bae6fd'; // Xanh bầu trời
+                rainSlider.classList.add('hidden');
+                createClouds(); // Bắt đầu mây bay
+            }
+
+            changeSystemTheme(newThemeColor);
+        }
+
+        function changeSystemTheme(newColor) {
+            // Thay thế màu UI (Tailwind classes) bằng RegEx
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null, false);
+            const regex = new RegExp(`(^|\\s|:)(bg|text|border|ring|shadow|from|to|via|accent)-${currentTheme}-`, 'g');
+            let node;
+            while ((node = walker.nextNode())) {
+                if (node.className && typeof node.className === 'string') {
+                    node.className = node.className.replace(regex, `$1$2-${newColor}-`);
+                }
+            }
+            currentTheme = newColor;
+            
+            // Xử lý riêng Header Popup nếu gọi lại
+            const popupHeader = document.getElementById('popupHeader');
+            popupHeader.className = `absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-${newColor}-500 to-${newColor}-300 -z-10`;
+        }
+
+        // --- HIỆU ỨNG MƯA ---
+        function updateRainIntensity() {
+            const container = document.getElementById('weatherEffectsContainer');
+            container.innerHTML = ''; // Reset mưa
+            const intensity = document.getElementById('rainIntensitySlider').value;
+            const dropCount = intensity * 25; // 1: 25 giọt -> 10: 250 giọt
+
+            for(let i=0; i<dropCount; i++) {
+                let drop = document.createElement('div');
+                drop.style.position = 'absolute';
+                drop.style.width = '2px';
+                drop.style.height = (Math.random() * 25 + 15) + 'px';
+                drop.style.background = 'rgba(255, 255, 255, 0.6)';
+                drop.style.left = Math.random() * 100 + 'vw';
+                drop.style.top = '-20vh';
+                // Tốc độ rơi: lượng mưa lớn -> rơi nhanh hơn
+                let duration = (Math.random() * 0.5 + 0.4) - (intensity * 0.02);
+                drop.style.animation = `rainFall ${duration > 0.2 ? duration : 0.2}s linear infinite`;
+                drop.style.animationDelay = `${Math.random() * 2}s`;
+                container.appendChild(drop);
+            }
+        }
+
+        function createLightning() {
+            const flash = document.createElement('div');
+            flash.className = 'lightning-flash';
+            document.body.appendChild(flash);
+            setTimeout(() => { if(flash) flash.remove(); }, 600);
+        }
+
+        // --- HIỆU ỨNG MÂY ---
+        function createClouds() {
+            const container = document.getElementById('weatherEffectsContainer');
+            const cloudIcons = ['fa-cloud', 'fa-cloud']; // Có thể mix thêm icon khác
+            
+            for(let i = 0; i < 6; i++) {
+                let cloud = document.createElement('i');
+                cloud.className = `fas fa-cloud absolute text-white drop-shadow-md`;
+                cloud.style.fontSize = (Math.random() * 4 + 3) + 'rem'; // Size bự
+                cloud.style.top = (Math.random() * 30 + 5) + 'vh'; // Nửa trên màn hình
+                cloud.style.left = '-20vw';
+                cloud.style.opacity = '0';
+                
+                let duration = Math.random() * 30 + 25; // 25s - 55s trôi ngang màn hình
+                cloud.style.animation = `cloudMove ${duration}s linear infinite`;
+                cloud.style.animationDelay = `${(i * 5) + Math.random() * 10}s`; // Rải rác ra
+                
+                container.appendChild(cloud);
+            }
+        }
+
+        // ==========================================
+        // CÁC HÀM CŨ CỦA HỆ THỐNG ĐƯỢC GIỮ NGUYÊN
+        // ==========================================
+        let appData = { news: [], tickers: [], classes: [] };
+        let currentActiveScope = 'General';
+        let currentViewMode = 'grid';
+
+        function showLoading(msg) {
+            document.getElementById('loaderText').innerText = msg;
+            document.getElementById('globalLoader').classList.remove('hidden');
+        }
+        function hideLoading() {
+            document.getElementById('globalLoader').classList.add('hidden');
+        }
+
+        window.onload = async () => {
+            if(API_URL) {
+                showLoading("Connecting database...");
+                try {
+                    const res = await fetch(API_URL);
+                    appData = await res.json();
+                    hideLoading();
+                    document.getElementById('newsView').classList.remove('hidden');
+                } catch(e) {
+                    hideLoading();
+                    console.log('No API connected.');
+                }
+            } else {
+                document.getElementById('newsView').classList.remove('hidden');
+            }
+        };
+
+        function showView(v) {
+            document.getElementById('newsView').classList.add('hidden');
+            document.getElementById('submitView').classList.add('hidden');
+            if(v === 'home') document.getElementById('newsView').classList.remove('hidden');
+            if(v === 'submit') document.getElementById('submitView').classList.remove('hidden');
+            window.scrollTo(0,0);
+        }
+
+        function setViewMode(mode) {
+            currentViewMode = mode;
+            const btnGrid = document.getElementById('btnGrid');
+            const btnList = document.getElementById('btnList');
+            
+            if (mode === 'grid') {
+                btnGrid.className = `px-3.5 py-1.5 rounded-lg bg-white text-${currentTheme}-600 shadow-sm font-medium transition`;
+                btnList.className = `px-3.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 font-medium transition`;
+            } else {
+                btnList.className = `px-3.5 py-1.5 rounded-lg bg-white text-${currentTheme}-600 shadow-sm font-medium transition`;
+                btnGrid.className = `px-3.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 font-medium transition`;
+            }
+        }
+    </script>
+</body>
+</html>
